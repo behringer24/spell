@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/behringer24/argumentative"
@@ -21,6 +22,7 @@ const (
 var (
 	inFileName  *string
 	outFileName *string
+	generateVer *string
 	showHelp    *bool
 	showVer     *bool
 )
@@ -40,7 +42,8 @@ func markdownToHTML(content string) string {
 }
 
 func addChapter(book *epub.EPub, chapterTitle string, chapterNumber int, chapterContent strings.Builder) error {
-	htmlContent := markdownToHTML(chapterContent.String())
+	//htmlContent := markdownToHTML(chapterContent.String())
+	htmlContent := chapterContent.String()
 	filename := fmt.Sprintf("chapter_%05d.xhtml", chapterNumber)
 	_, err := book.AddXHTML(filename, htmlContent, 10)
 	if err != nil {
@@ -59,6 +62,7 @@ func parseMarkdown(book *epub.EPub, content string) error {
 	var currentNavpoint *epub.Navpoint
 	chapterRegex := regexp.MustCompile(`^\s*(#)\s*([^#]+)$`)
 	headlinesRegex := regexp.MustCompile(`^\s*(#{2,6})\s*([^#]+)$`)
+	dividerRegex := regexp.MustCompile(`^\s*([\*,\-,_]\s*)+$`)
 
 	for _, line := range lines {
 		if chapterRegex.MatchString(line) {
@@ -67,7 +71,7 @@ func parseMarkdown(book *epub.EPub, content string) error {
 				addChapter(book, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
 			}
 
-			// Neue Kapitelüberschrift und Reset des Inhalts
+			// New chapter headline
 			matches := chapterRegex.FindStringSubmatch(line)
 			currentChapterTitle = matches[2]
 			currentChapterContent.Reset()
@@ -82,7 +86,7 @@ func parseMarkdown(book *epub.EPub, content string) error {
 			chapterLevel := strings.Count(matches[1], "#")
 			currentChapterNumber[chapterLevel]++
 			currentChapterLabel := fmt.Sprintf("#label%d_%d", chapterLevel, currentChapterNumber[chapterLevel])
-			currentChapterContent.WriteString(fmt.Sprintf("<h%d>%s</h%d><a href=\"%s\"/>\n", chapterLevel, matches[2], chapterLevel, currentChapterLabel))
+			currentChapterContent.WriteString(fmt.Sprintf("<a name=\"%s\"><h%d>%s</h%d></a>\n", currentChapterLabel, chapterLevel, matches[2], chapterLevel))
 			if currentNavpoint != nil {
 				anchorname := fmt.Sprintf("chapter_%05d.xhtml%s", currentChapterNumber[1], currentChapterLabel)
 				currentNavpoint.AddNavpoint(matches[2], anchorname, 0)
@@ -90,9 +94,13 @@ func parseMarkdown(book *epub.EPub, content string) error {
 			} else {
 				log.Printf("Subchapter %s outside chapter", matches[2])
 			}
+		} else if dividerRegex.MatchString(line) {
+			currentChapterContent.WriteString("<hr/>\n")
 		} else {
-			// Normale Zeile, füge sie zum aktuellen Kapitelinhalt hinzu
-			currentChapterContent.WriteString("<p>" + line + "</p>\n")
+			// Normal line just add if not empty
+			if strings.Compare(strings.TrimSpace(line), "") != 0 {
+				currentChapterContent.WriteString("<p>" + line + "</p>\n")
+			}
 		}
 	}
 
@@ -124,7 +132,8 @@ func processMarkdownFile(book *epub.EPub, filePath string) error {
 func parseArgs() {
 	flags := &argumentative.Flags{}
 	showHelp = flags.Flags().AddBool("help", "h", "Show this help text")
-	showVer = flags.Flags().AddBool("version", "", "Show version information")
+	showVer = flags.Flags().AddBool("version", "v", "Show version information")
+	generateVer = flags.Flags().AddString("epub", "e", false, "3", "Generate epub version 2 or 3")
 	inFileName = flags.Flags().AddPositional("infile", true, "", "File to read from")
 	outFileName = flags.Flags().AddPositional("outfile", false, "./ebook.epub", "File to write to")
 
@@ -135,6 +144,9 @@ func parseArgs() {
 	} else if *showVer {
 		fmt.Print(title, "version", version)
 		os.Exit(0)
+	} else if strings.Compare(*generateVer, "2") != 0 && strings.Compare(*generateVer, "3") != 0 {
+		fmt.Print("Error, epub version has to be 2 or 3")
+		os.Exit(1)
 	} else if err != nil {
 		flags.Usage(title, description, err)
 		os.Exit(1)
@@ -159,7 +171,8 @@ func main() {
 	}
 
 	// EPUB speichern
-	book.SetVersion(3)
+	epubVersion, _ := strconv.Atoi(*generateVer)
+	book.SetVersion(float64(epubVersion))
 
 	err = book.Write(*outFileName)
 	if err != nil {
