@@ -1,8 +1,6 @@
 # spell
 Smart Processing and Enhanced Lightweight Layout
 
-Smart Processing and Enhanced Lightweight Layout
-
 ## Meaning:
 - Smart Processing: The project offers intelligent processing of Markdown files, including the expansion through additional commands.
 - Processing: The conversion of Markdown to EPUB3 and the ability to embed various commands like /include.
