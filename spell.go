@@ -59,7 +59,7 @@ func parseMarkdown(book *epub.EPub, content string) error {
 	var currentChapterContent strings.Builder
 	var currentChapterTitle string
 	var currentChapterNumber [7]int
-	var currentNavpoint *epub.Navpoint
+	var currentNavpoint [7]*epub.Navpoint
 	chapterRegex := regexp.MustCompile(`^\s*(#)\s*([^#]+)$`)
 	headlinesRegex := regexp.MustCompile(`^\s*(#{2,6})\s*([^#]+)$`)
 	dividerRegex := regexp.MustCompile(`^\s*([\*,\-,_]\s*)+$`)
@@ -77,7 +77,7 @@ func parseMarkdown(book *epub.EPub, content string) error {
 			currentChapterContent.Reset()
 			currentChapterNumber[1]++
 			filename := fmt.Sprintf("chapter_%05d.xhtml", currentChapterNumber[1])
-			currentNavpoint = book.AddNavpoint(currentChapterTitle, filename, 10)
+			currentNavpoint[1] = book.AddNavpoint(currentChapterTitle, filename, 10)
 
 			currentChapterContent.WriteString("<h1>" + matches[2] + "</h1>\n")
 		} else if headlinesRegex.MatchString(line) {
@@ -85,11 +85,11 @@ func parseMarkdown(book *epub.EPub, content string) error {
 			matches := headlinesRegex.FindStringSubmatch(line)
 			chapterLevel := strings.Count(matches[1], "#")
 			currentChapterNumber[chapterLevel]++
-			currentChapterLabel := fmt.Sprintf("#label%d_%d", chapterLevel, currentChapterNumber[chapterLevel])
-			currentChapterContent.WriteString(fmt.Sprintf("<a name=\"%s\"><h%d>%s</h%d></a>\n", currentChapterLabel, chapterLevel, matches[2], chapterLevel))
-			if currentNavpoint != nil {
-				anchorname := fmt.Sprintf("chapter_%05d.xhtml%s", currentChapterNumber[1], currentChapterLabel)
-				currentNavpoint.AddNavpoint(matches[2], anchorname, 0)
+			currentChapterLabel := fmt.Sprintf("label%d_%d", chapterLevel, currentChapterNumber[chapterLevel])
+			currentChapterContent.WriteString(fmt.Sprintf("<h%d id=\"%s\">%s</h%d>\n", chapterLevel, currentChapterLabel, matches[2], chapterLevel))
+			if currentNavpoint[chapterLevel-1] != nil {
+				anchorname := fmt.Sprintf("chapter_%05d.xhtml#%s", currentChapterNumber[1], currentChapterLabel)
+				currentNavpoint[chapterLevel] = currentNavpoint[chapterLevel-1].AddNavpoint(matches[2], anchorname, 0)
 				log.Printf("Add subchapter %s as %s", matches[2], anchorname)
 			} else {
 				log.Printf("Subchapter %s outside chapter", matches[2])
