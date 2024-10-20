@@ -17,7 +17,7 @@ import (
 const (
 	title       = "spell"
 	description = "Smart Processing and Enhanced Lightweight Layout"
-	version     = "v0.0.1"
+	version     = "v0.0.2"
 )
 
 var (
