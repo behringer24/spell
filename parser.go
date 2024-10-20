@@ -19,6 +19,7 @@ func addChapter(book *epub.EPub, chapterTitle string, chapterNumber int, chapter
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <title>` + chapterTitle + `</title>
+		<link rel="stylesheet" href="../css/styles.css"/>
     </head>
     <body>
 	` + chapterContent.String() + `
@@ -90,6 +91,8 @@ func parseMarkdown(book *epub.EPub, content string, baseDir string) error {
 	metaRegex := regexp.MustCompile(`\!\[(title|author|series|set|entry|uuid|language)\]\(\"([^\"]+)\"\)`)
 	coverRegex := regexp.MustCompile(`\!\[cover\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
 	imageRegex := regexp.MustCompile(`\!\[([^\]]*)\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
+
+	addDefaultTemplate(book)
 
 	for _, line := range lines {
 		if chapterRegex.MatchString(line) {
