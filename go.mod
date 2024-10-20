@@ -1,6 +1,6 @@
 module github.com/behringer24/spell
 
-go 1.23
+go 1.23.2
 
 require (
 	github.com/behringer24/argumentative v1.0.2
