@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,7 +28,7 @@ var (
 	showVer     *bool
 )
 
-// Funktion zum Einlesen einer Datei
+// Function for reading a file
 func readFile(filename string) (string, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
@@ -36,92 +37,50 @@ func readFile(filename string) (string, error) {
 	return string(data), nil
 }
 
-// Konvertiert Markdown-Inhalt in HTML
+// Convert markdown to html
 func markdownToHTML(content string) string {
 	return string(blackfriday.Run([]byte(content)))
 }
 
-func addChapter(book *epub.EPub, chapterTitle string, chapterNumber int, chapterContent strings.Builder) error {
-	//htmlContent := markdownToHTML(chapterContent.String())
-	htmlContent := chapterContent.String()
-	filename := fmt.Sprintf("chapter_%05d.xhtml", chapterNumber)
-	_, err := book.AddXHTML(filename, htmlContent, 10)
-	if err != nil {
-		return err
-	}
-	log.Printf("Add chapter %s as %s", chapterTitle, filename)
-	return nil
-}
-
-// Funktion zum Verarbeiten der Kapitel und anderer Markdown-Kommandos
-func parseMarkdown(book *epub.EPub, content string) error {
-	lines := strings.Split(content, "\r\n")
-	var currentChapterContent strings.Builder
-	var currentChapterTitle string
-	var currentChapterNumber [7]int
-	var currentNavpoint [7]*epub.Navpoint
-	chapterRegex := regexp.MustCompile(`^\s*(#)\s*([^#]+)$`)
-	headlinesRegex := regexp.MustCompile(`^\s*(#{2,6})\s*([^#]+)$`)
-	dividerRegex := regexp.MustCompile(`^\s*([\*,\-,_]\s*)+$`)
-
-	for _, line := range lines {
-		if chapterRegex.MatchString(line) {
-			// Chapter starting with one # char
-			if currentChapterTitle != "" {
-				addChapter(book, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
-			}
-
-			// New chapter headline
-			matches := chapterRegex.FindStringSubmatch(line)
-			currentChapterTitle = matches[2]
-			currentChapterContent.Reset()
-			currentChapterNumber[1]++
-			filename := fmt.Sprintf("chapter_%05d.xhtml", currentChapterNumber[1])
-			currentNavpoint[1] = book.AddNavpoint(currentChapterTitle, filename, 10)
-
-			currentChapterContent.WriteString("<h1>" + matches[2] + "</h1>\n")
-		} else if headlinesRegex.MatchString(line) {
-			// Headline with 2 or more #
-			matches := headlinesRegex.FindStringSubmatch(line)
-			chapterLevel := strings.Count(matches[1], "#")
-			currentChapterNumber[chapterLevel]++
-			currentChapterLabel := fmt.Sprintf("label%d_%d", chapterLevel, currentChapterNumber[chapterLevel])
-			currentChapterContent.WriteString(fmt.Sprintf("<h%d id=\"%s\">%s</h%d>\n", chapterLevel, currentChapterLabel, matches[2], chapterLevel))
-			if currentNavpoint[chapterLevel-1] != nil {
-				anchorname := fmt.Sprintf("chapter_%05d.xhtml#%s", currentChapterNumber[1], currentChapterLabel)
-				currentNavpoint[chapterLevel] = currentNavpoint[chapterLevel-1].AddNavpoint(matches[2], anchorname, 0)
-				log.Printf("Add subchapter %s as %s", matches[2], anchorname)
-			} else {
-				log.Printf("Subchapter %s outside chapter", matches[2])
-			}
-		} else if dividerRegex.MatchString(line) {
-			currentChapterContent.WriteString("<hr/>\n")
-		} else {
-			// Normal line just add if not empty
-			if strings.Compare(strings.TrimSpace(line), "") != 0 {
-				currentChapterContent.WriteString("<p>" + line + "</p>\n")
-			}
+// Replace all includes of md files using markdown syntax for images like
+// ![include](uri/uri.md "text") or
+// ![include](uri/uri.md)
+// text is optional and ignored, you can use it as internal reference
+func replaceAllIncludes(content string, baseDir string) string {
+	commandRegex := regexp.MustCompile(`\!\[include\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
+	return commandRegex.ReplaceAllStringFunc(content, func(match string) string {
+		// Extract includes and parameters
+		matches := commandRegex.FindStringSubmatch(match)
+		if len(matches) < 2 && strings.Compare(filepath.Ext(matches[2]), ".md") != 0 {
+			log.Printf("Error including %s with URI %s", matches[0], matches[1])
+			return match // Fallback: if the pattern is wrong or not an md file
 		}
-	}
 
-	// Füge das letzte Kapitel hinzu
-	if currentChapterTitle != "" {
-		addChapter(book, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
-	}
+		includeContent, err := readFile(filepath.Join(baseDir, matches[1]))
+		if err != nil {
+			log.Printf("Error including %s with URI %s: %v", matches[0], matches[1], err)
+			return match
+		}
 
-	return nil
+		log.Printf("Including markdown file %s (%s)", matches[1], matches[3])
+		return includeContent
+	})
 }
 
-// Funktion zum Verarbeiten einer Markdown-Datei
+// Process Markdown file
 func processMarkdownFile(book *epub.EPub, filePath string) error {
-	// Lese den Inhalt der Markdown-Datei ein
+	// Read markdown file
 	content, err := readFile(filePath)
 	if err != nil {
 		return err
 	}
 
-	// Füge Kapitel basierend auf den Markdown-Überschriften hinzu
-	err = parseMarkdown(book, content)
+	// Replace all includes
+	baseDir := filepath.Dir(filePath)
+	content = replaceAllIncludes(content, baseDir)
+
+	// Parse markdown
+	err = parseMarkdown(book, content, baseDir)
 	if err != nil {
 		return err
 	}
@@ -129,6 +88,7 @@ func processMarkdownFile(book *epub.EPub, filePath string) error {
 	return nil
 }
 
+// Parse command line parameters
 func parseArgs() {
 	flags := &argumentative.Flags{}
 	showHelp = flags.Flags().AddBool("help", "h", "Show this help text")
@@ -159,10 +119,6 @@ func main() {
 
 	// Erstelle ein neues EPUB-Buch
 	book := epub.New()
-
-	// Setze Metadaten für das EPUB
-	book.SetTitle("Markdown to EPUB")
-	book.AddAuthor("Unknown Author")
 
 	// Verarbeite alle angegebenen Markdown-Dateien
 	err := processMarkdownFile(book, *inFileName)
