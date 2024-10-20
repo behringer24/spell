@@ -16,7 +16,7 @@ import (
 
 const (
 	title       = "spell"
-	description = "A small demonstration"
+	description = "Smart Processing and Enhanced Lightweight Layout"
 	version     = "v0.0.1"
 )
 
@@ -102,10 +102,10 @@ func parseArgs() {
 		flags.Usage(title, description, nil)
 		os.Exit(0)
 	} else if *showVer {
-		fmt.Print(title, "version", version)
+		fmt.Print(strings.ToUpper(title), " version: ", version)
 		os.Exit(0)
 	} else if strings.Compare(*generateVer, "2") != 0 && strings.Compare(*generateVer, "3") != 0 {
-		fmt.Print("Error, epub version has to be 2 or 3")
+		fmt.Print("Error: epub version has to be 2 or 3")
 		os.Exit(1)
 	} else if err != nil {
 		flags.Usage(title, description, err)
@@ -114,22 +114,21 @@ func parseArgs() {
 }
 
 func main() {
-	// Verwende argumentative für die Kommandozeilenparameter
+	// Use argumentative as command line parser
 	parseArgs()
 
-	// Erstelle ein neues EPUB-Buch
+	// Create new empty epub book
 	book := epub.New()
 
-	// Verarbeite alle angegebenen Markdown-Dateien
+	// Process input file
 	err := processMarkdownFile(book, *inFileName)
 	if err != nil {
 		log.Fatalf("Fehler beim Verarbeiten der Datei '%s': %v", *inFileName, err)
 	}
 
-	// EPUB speichern
+	// Save epub
 	epubVersion, _ := strconv.Atoi(*generateVer)
 	book.SetVersion(float64(epubVersion))
-
 	err = book.Write(*outFileName)
 	if err != nil {
 		log.Fatalf("Fehler beim Speichern der EPUB-Datei '%s': %v", *outFileName, err)
