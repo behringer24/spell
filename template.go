@@ -7,17 +7,29 @@ import (
 )
 
 const defaultCSS = `// Default CSS
+body {
+  font-family: Palatino;
+}
 h1, h2, h3, h4, h5, h6 {
-	font-family: sans-serif;
+	font-family: Helvetica;
 	font-variant: small-caps;
-	color: #888888;
+	color: #666666;
 }
 h1 {
 	border: 1px solid #888;
 	border-width: 1px 0;
-	width: 80%;
+	text-align: center;
+	width: 75%;
 	padding: 0.5em;
-	margin: 0 auto 0 auto;
+	margin: 2em auto 4em auto;
+}
+h2 {
+	border: 1px solid #888;
+	border-width: 0 0 1px 0;
+	padding: 0.5em 0;
+}
+p.firstparagraph {
+	text-indent: 2em;
 }
 `
 
