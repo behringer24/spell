@@ -37,6 +37,7 @@ go build .
 ```
 
 # Usage
+You find detailed documentation for the *spell* syntax in [the Github Wiki](https://github.com/behringer24/spell/wiki)
 ## General usage help
 You can get a general help by calling:
 ```
