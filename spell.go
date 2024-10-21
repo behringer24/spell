@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/behringer24/argumentative"
-	"github.com/russross/blackfriday/v2"
 	"github.com/writingtoole/epub"
 )
 
@@ -36,11 +35,6 @@ func readFile(filename string) (string, error) {
 		return "", err
 	}
 	return string(data), nil
-}
-
-// Convert markdown to html
-func markdownToHTML(content string) string {
-	return string(blackfriday.Run([]byte(content)))
 }
 
 // Replace all includes of md files using markdown syntax for images like
