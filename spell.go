@@ -21,11 +21,12 @@ const (
 )
 
 var (
-	inFileName  *string
-	outFileName *string
-	generateVer *string
-	showHelp    *bool
-	showVer     *bool
+	inFileName    *string
+	outFileName   *string
+	generateVer   *string
+	generateCover *bool
+	showHelp      *bool
+	showVer       *bool
 )
 
 // Function for reading a file
@@ -93,6 +94,7 @@ func parseArgs() {
 	flags := &argumentative.Flags{}
 	showHelp = flags.Flags().AddBool("help", "h", "Show this help text")
 	showVer = flags.Flags().AddBool("version", "v", "Show version information")
+	generateCover = flags.Flags().AddBool("cover", "c", "Generate cover page. This is normally not recommended")
 	generateVer = flags.Flags().AddString("epub", "e", false, "3", "Generate epub version 2 or 3")
 	inFileName = flags.Flags().AddPositional("infile", true, "", "File to read from")
 	outFileName = flags.Flags().AddPositional("outfile", false, "./ebook.epub", "File to write to")
