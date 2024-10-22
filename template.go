@@ -31,6 +31,11 @@ h2 {
 p.firstparagraph {
 	text-indent: 2em;
 }
+p {
+	text-indent: 1em;
+	margin-block-start: 0.2em;
+    margin-block-end: 0.2em;
+}
 `
 
 func addDefaultTemplate(book *epub.EPub) {
