@@ -98,7 +98,7 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 	metaRegex := regexp.MustCompile(`\$\[(title|author|series|set|entry|uuid|language|quotes)\]\(([^\)]+)\)`)
 	coverRegex := regexp.MustCompile(`\!\[cover\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
 	imageRegex := regexp.MustCompile(`\!\[([^\]]*)\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
-	quotesRegex := regexp.MustCompile(`(\$"|"\$|\$'|'\$)`)
+	quotesRegex := regexp.MustCompile(`(%"|"%|%'|'%)`)
 	boldRegex := regexp.MustCompile(`\*\*([^\*]+)\*\*`)
 	italicRegex := regexp.MustCompile(`\*([^\*]+)\*`)
 	commentRegex := regexp.MustCompile(`//.*$`)
@@ -233,13 +233,13 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 			matches := quotesRegex.FindStringSubmatch(match)
 
 			switch sequence := matches[1]; sequence {
-			case `$"`:
+			case `%"`:
 				return laquo
-			case `"$`:
+			case `"%`:
 				return raquo
-			case `$'`:
+			case `%'`:
 				return lsaquo
-			case `'$`:
+			case `'%`:
 				return rsaquo
 			default:
 				return sequence
