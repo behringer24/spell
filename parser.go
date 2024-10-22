@@ -16,11 +16,14 @@ var (
 	currentChapterNumber  [7]int
 	currentNavpoint       [7]*epub.Navpoint
 	currentImageId        int
-	firstparagraph        bool = true
-	laquo                      = "\""
-	raquo                      = "\""
-	lsaquo                     = "'"
-	rsaquo                     = "'"
+
+	firstparagraph bool = true
+	inUlList       bool
+
+	laquo  = "\""
+	raquo  = "\""
+	lsaquo = "'"
+	rsaquo = "'"
 )
 
 // Add a chapter file to the book
@@ -96,8 +99,16 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 	coverRegex := regexp.MustCompile(`\!\[cover\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
 	imageRegex := regexp.MustCompile(`\!\[([^\]]*)\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
 	quotesRegex := regexp.MustCompile(`(\$"|"\$|\$'|'\$)`)
+	boldRegex := regexp.MustCompile(`\*\*([^\*]+)\*\*`)
+	italicRegex := regexp.MustCompile(`\*([^\*]+)\*`)
+	commentRegex := regexp.MustCompile(`//.*$`)
+	ulListRegex := regexp.MustCompile(`^\s*-\s*(.*)$`)
 
-	if chapterRegex.MatchString(line) {
+	if inUlList && !ulListRegex.MatchString(line) && !insideBlock {
+		// End unordered List if open and no new list element
+		inUlList = false
+		return "</ul>\n" + parseLine(book, line, baseDir, false)
+	} else if chapterRegex.MatchString(line) {
 		// Chapter starting with one # char
 		if currentChapterTitle != "" {
 			addChapter(book, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
@@ -233,6 +244,43 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 			default:
 				return sequence
 			}
+		})
+
+		return parseLine(book, line, baseDir, insideBlock)
+	} else if ulListRegex.MatchString(line) {
+		// List elements
+		matches := ulListRegex.FindStringSubmatch(line)
+		newline := ""
+
+		if !inUlList {
+			newline = "<ul>\n"
+			inUlList = true
+		}
+
+		log.Printf("Add LI Element %s", matches[1])
+		newline = newline + "  <li>" + parseLine(book, matches[1], baseDir, true) + "</li>\n"
+
+		return newline
+	} else if boldRegex.MatchString(line) {
+		// Make text bold between ** and **
+		line = boldRegex.ReplaceAllStringFunc(line, func(match string) string {
+			matches := boldRegex.FindStringSubmatch(match)
+			return "<b>" + parseLine(book, matches[1], baseDir, true) + "</b>"
+		})
+
+		return parseLine(book, line, baseDir, insideBlock)
+	} else if italicRegex.MatchString(line) {
+		// Make text italic between * and *
+		line = italicRegex.ReplaceAllStringFunc(line, func(match string) string {
+			matches := italicRegex.FindStringSubmatch(match)
+			return "<i>" + parseLine(book, matches[1], baseDir, true) + "</i>"
+		})
+
+		return parseLine(book, line, baseDir, insideBlock)
+	} else if commentRegex.MatchString(line) {
+		// Remove comments starting with //
+		line = commentRegex.ReplaceAllStringFunc(line, func(match string) string {
+			return ""
 		})
 
 		return parseLine(book, line, baseDir, insideBlock)
