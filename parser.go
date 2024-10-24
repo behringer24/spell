@@ -93,7 +93,7 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 	// define regular expressions do detect commands
 	chapterRegex := regexp.MustCompile(`^\s*(#)\s*([^#]+)$`)
 	headlinesRegex := regexp.MustCompile(`^\s*(#{2,6})\s*([^#]+)$`)
-	dividerRegex := regexp.MustCompile(`^\s*([\*,\-]\s*)+$`)
+	dividerRegex := regexp.MustCompile(`^\s*([\*]\s*)+$`)
 	pagebreakRegex := regexp.MustCompile(`^\s*(_\s*)+$`)
 	metaRegex := regexp.MustCompile(`\$\[(title|author|series|set|entry|uuid|language|quotes)\]\(([^\)]+)\)`)
 	coverRegex := regexp.MustCompile(`\!\[cover\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
@@ -103,6 +103,9 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 	italicRegex := regexp.MustCompile(`\*([^\*]+)\*`)
 	commentRegex := regexp.MustCompile(`//.*$`)
 	ulListRegex := regexp.MustCompile(`^\s*-\s*(.*)$`)
+	longDashRegex := regexp.MustCompile(`\s+(---)\s+`)
+	midDashRegex := regexp.MustCompile(`\s+(--)\s+`)
+	threeDotsRegex := regexp.MustCompile(`(\.\.\.)`)
 
 	if inUlList && !ulListRegex.MatchString(line) && !insideBlock {
 		// End unordered List if open and no new list element
@@ -257,7 +260,7 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 			inUlList = true
 		}
 
-		log.Printf("Add LI Element %s", matches[1])
+		log.Print("Add LI Element")
 		newline = newline + "  <li>" + parseLine(book, matches[1], baseDir, true) + "</li>\n"
 
 		return newline
@@ -281,6 +284,27 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		// Remove comments starting with //
 		line = commentRegex.ReplaceAllStringFunc(line, func(match string) string {
 			return ""
+		})
+
+		return parseLine(book, line, baseDir, insideBlock)
+	} else if longDashRegex.MatchString(line) {
+		// Replace --- with long dash
+		line = longDashRegex.ReplaceAllStringFunc(line, func(match string) string {
+			return "&nbsp;&mdash;&nbsp;"
+		})
+
+		return parseLine(book, line, baseDir, insideBlock)
+	} else if midDashRegex.MatchString(line) {
+		// Replace -- with medium dash
+		line = midDashRegex.ReplaceAllStringFunc(line, func(match string) string {
+			return "&nbsp;&ndash;&nbsp;"
+		})
+
+		return parseLine(book, line, baseDir, insideBlock)
+	} else if threeDotsRegex.MatchString(line) {
+		// Replace ... with typographic sign
+		line = threeDotsRegex.ReplaceAllStringFunc(line, func(match string) string {
+			return "&hellip;"
 		})
 
 		return parseLine(book, line, baseDir, insideBlock)
