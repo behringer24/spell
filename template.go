@@ -33,8 +33,16 @@ p.firstparagraph {
 }
 p {
 	text-indent: 1em;
-	margin-block-start: 0.2em;
-    margin-block-end: 0.2em;
+}
+p, li {
+	margin-top: 0.3em;
+    margin-bottom: 0.3em;
+}
+hr {
+	border: 1px solid #444;
+	height: 2px;
+	width: 25%;
+	margin: 3em auto 3em auto;
 }
 `
 
