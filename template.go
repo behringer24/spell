@@ -44,6 +44,21 @@ hr {
 	width: 25%;
 	margin: 3em auto 3em auto;
 }
+blockquote {
+	margin-left: 3em;
+	padding: 1em;
+	background-color: #aaa;
+	border-radius: 5px;
+}
+blockquote.code {
+	font-family: "monospace"
+}
+span.code {
+	background-color: #aaa;
+	border-radius: 2px;
+	padding: 0.1em;
+	font-family: "monospace"
+}
 `
 
 func addDefaultTemplate(book *epub.EPub) {

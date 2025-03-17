@@ -10,6 +10,11 @@ import (
 	"github.com/writingtoole/epub"
 )
 
+const (
+	BLOCKTYPE_NONE int = 0
+	BLOCKTYPE_CODE int = 1
+)
+
 var (
 	currentChapterContent strings.Builder
 	currentChapterTitle   string
@@ -19,6 +24,7 @@ var (
 
 	firstparagraph bool = true
 	inUlList       bool
+	inBlockType    int = 0
 
 	laquo  = "\""
 	raquo  = "\""
@@ -93,7 +99,7 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 	// define regular expressions do detect commands
 	chapterRegex := regexp.MustCompile(`^\s*(#)\s*([^#]+)$`)
 	headlinesRegex := regexp.MustCompile(`^\s*(#{2,6})\s*([^#]+)$`)
-	dividerRegex := regexp.MustCompile(`^\s*([\*]\s*)+$`)
+	dividerRegex := regexp.MustCompile(`^\s*([\*\-]\s*)+$`)
 	pagebreakRegex := regexp.MustCompile(`^\s*(_\s*)+$`)
 	metaRegex := regexp.MustCompile(`\$\[(title|author|series|set|entry|uuid|language|quotes)\]\(([^\)]+)\)`)
 	coverRegex := regexp.MustCompile(`\!\[cover\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
@@ -101,16 +107,35 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 	quotesRegex := regexp.MustCompile(`(%"|"%|%'|'%)`)
 	boldRegex := regexp.MustCompile(`\*\*([^\*]+)\*\*`)
 	italicRegex := regexp.MustCompile(`\*([^\*]+)\*`)
+	codeRegex := regexp.MustCompile("`([^`]+)`")
 	commentRegex := regexp.MustCompile(`//.*$`)
 	ulListRegex := regexp.MustCompile(`^\s*-\s*(.*)$`)
 	longDashRegex := regexp.MustCompile(`\s+(---)\s+`)
 	midDashRegex := regexp.MustCompile(`\s+(--)\s+`)
 	threeDotsRegex := regexp.MustCompile(`(\.\.\.)`)
+	blockQuoteRegex := regexp.MustCompile("\\s*```\\s*([a-zA-Z]*)")
 
 	if inUlList && !ulListRegex.MatchString(line) && !insideBlock {
 		// End unordered List if open and no new list element
 		inUlList = false
 		return "</ul>\n" + parseLine(book, line, baseDir, false)
+	} else if blockQuoteRegex.MatchString(line) {
+		log.Printf("blockQuote ``` gefunden")
+		if inBlockType > 0 {
+			log.Printf("blockQuote schließen")
+			inBlockType = 0
+			return "</blockquote>\n"
+		} else {
+			//matches := blockQuoteRegex.FindStringSubmatch(line)
+			//log.Printf("blockQuote opening: %s", matches[2])
+			inBlockType = BLOCKTYPE_CODE
+			return fmt.Sprintf("<blockquote class=\"%s\">\n", "code")
+		}
+	} else if inBlockType != BLOCKTYPE_NONE {
+		if inBlockType == BLOCKTYPE_CODE {
+			log.Printf("blockQuote Codezeile")
+			return fmt.Sprintf("%s</br>\n", line)
+		}
 	} else if chapterRegex.MatchString(line) {
 		// Chapter starting with one # char
 		if currentChapterTitle != "" {
@@ -277,6 +302,14 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		line = italicRegex.ReplaceAllStringFunc(line, func(match string) string {
 			matches := italicRegex.FindStringSubmatch(match)
 			return "<i>" + parseLine(book, matches[1], baseDir, true) + "</i>"
+		})
+
+		return parseLine(book, line, baseDir, insideBlock)
+	} else if codeRegex.MatchString(line) {
+		// Make text appear as code  between ` and `
+		line = codeRegex.ReplaceAllStringFunc(line, func(match string) string {
+			matches := codeRegex.FindStringSubmatch(match)
+			return `<span class="code">` + matches[1] + "</span>"
 		})
 
 		return parseLine(book, line, baseDir, insideBlock)
