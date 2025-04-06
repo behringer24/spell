@@ -13,6 +13,7 @@ import (
 const (
 	BLOCKTYPE_NONE int = 0
 	BLOCKTYPE_CODE int = 1
+	BLOCKTYPE_CITE int = 2
 )
 
 var (
@@ -120,21 +121,31 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		inUlList = false
 		return "</ul>\n" + parseLine(book, line, baseDir, false)
 	} else if blockQuoteRegex.MatchString(line) {
-		log.Printf("blockQuote ``` gefunden")
 		if inBlockType > 0 {
 			log.Printf("blockQuote schließen")
 			inBlockType = 0
 			return "</blockquote>\n"
 		} else {
-			//matches := blockQuoteRegex.FindStringSubmatch(line)
-			//log.Printf("blockQuote opening: %s", matches[2])
+			matches := blockQuoteRegex.FindStringSubmatch(line)
+			blocktype := "code"
 			inBlockType = BLOCKTYPE_CODE
-			return fmt.Sprintf("<blockquote class=\"%s\">\n", "code")
+			if len(matches) == 2 && matches[1] != "" {
+				blocktype = strings.ToLower(matches[1])
+
+				if blocktype == "cite" {
+					inBlockType = BLOCKTYPE_CITE
+				}
+			}
+			log.Printf("blockQuote opening: %s", blocktype)
+			return fmt.Sprintf("<blockquote class=\"%s\">\n", blocktype)
 		}
-	} else if inBlockType != BLOCKTYPE_NONE {
+	} else if inBlockType != BLOCKTYPE_NONE && !insideBlock {
 		if inBlockType == BLOCKTYPE_CODE {
-			log.Printf("blockQuote Codezeile")
+			log.Printf("blockQuote CODE line")
 			return fmt.Sprintf("%s</br>\n", line)
+		} else if inBlockType == BLOCKTYPE_CITE {
+			log.Printf("blockQuote CITE line")
+			return parseLine(book, line, baseDir, true)
 		}
 	} else if chapterRegex.MatchString(line) {
 		// Chapter starting with one # char
