@@ -14,6 +14,9 @@ const (
 	BLOCKTYPE_NONE int = 0
 	BLOCKTYPE_CODE int = 1
 	BLOCKTYPE_CITE int = 2
+	BLOCKTYPE_NOTE int = 3
+	BLOCKTYPE_INFO int = 4
+	BLOCKTYPE_WARN int = 5
 )
 
 var (
@@ -134,6 +137,12 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 
 				if blocktype == "cite" {
 					inBlockType = BLOCKTYPE_CITE
+				} else if blocktype == "note" {
+					inBlockType = BLOCKTYPE_NOTE
+				} else if blocktype == "info" {
+					inBlockType = BLOCKTYPE_INFO
+				} else if blocktype == "warn" {
+					inBlockType = BLOCKTYPE_WARN
 				}
 			}
 			log.Printf("blockQuote opening: %s", blocktype)
@@ -143,9 +152,9 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		if inBlockType == BLOCKTYPE_CODE {
 			log.Printf("blockQuote CODE line")
 			return fmt.Sprintf("%s</br>\n", line)
-		} else if inBlockType == BLOCKTYPE_CITE {
-			log.Printf("blockQuote CITE line")
-			return parseLine(book, line, baseDir, true)
+		} else {
+			log.Printf("blockQuote non CODE but parsed line")
+			return fmt.Sprintf("%s</br>\n", parseLine(book, line, baseDir, true))
 		}
 	} else if chapterRegex.MatchString(line) {
 		// Chapter starting with one # char
