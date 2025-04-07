@@ -15,7 +15,7 @@ h1, h2, h3, h4, h5, h6 {
 	font-variant: small-caps;
 	text-align: left;
 	color: #666666;
-	page-break-after:avoid;
+	page-break-after: avoid;
 	page-break-inside: avoid;
 }
 h1 {
@@ -51,6 +51,8 @@ blockquote {
 	margin-left: 3em;
 	margin-right: 3em;
 	padding: 1em;
+	page-break-before: avoid;
+	page-break-inside: avoid;
 }
 blockquote.cite {
 	font-size:140%;
