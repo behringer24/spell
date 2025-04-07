@@ -273,7 +273,7 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		return "<hr/>\n"
 	} else if pagebreakRegex.MatchString(line) {
 		// Add page break (not working on many ebook readers)
-		return `<div style="page-break-after: always"></div>` + "\n"
+		return `<MBP:PAGEBREAK/>` + "\n"
 	} else if quotesRegex.MatchString(line) {
 		// Add image
 		line = quotesRegex.ReplaceAllStringFunc(line, func(match string) string {
