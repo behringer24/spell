@@ -112,7 +112,7 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 	boldRegex := regexp.MustCompile(`\*\*([^\*]+)\*\*`)
 	italicRegex := regexp.MustCompile(`\*([^\*]+)\*`)
 	codeRegex := regexp.MustCompile("`([^`]+)`")
-	commentRegex := regexp.MustCompile(`//.*$`)
+	commentRegex := regexp.MustCompile(`(^|\s)//.*$`)
 	ulListRegex := regexp.MustCompile(`^\s*-\s*(.*)$`)
 	longDashRegex := regexp.MustCompile(`\s+(---)\s+`)
 	midDashRegex := regexp.MustCompile(`\s+(--)\s+`)
@@ -334,10 +334,8 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 
 		return parseLine(book, line, baseDir, insideBlock)
 	} else if commentRegex.MatchString(line) {
-		// Remove comments starting with //
-		line = commentRegex.ReplaceAllStringFunc(line, func(match string) string {
-			return ""
-		})
+		// Remove comments starting with // but preserve leading whitespace and don't match ://
+		line = commentRegex.ReplaceAllString(line, "$1")
 
 		return parseLine(book, line, baseDir, insideBlock)
 	} else if longDashRegex.MatchString(line) {
