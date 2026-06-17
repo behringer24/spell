@@ -196,7 +196,9 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		matches := reMeta.FindStringSubmatch(line)
 		if len(matches) < 2 {
 			log.Printf("Error setting meta %s to %s", matches[1], matches[2])
-			currentChapterContent.WriteString("<p>" + line + "</p>\n")
+			currentChapterContent.WriteString("<p>")
+			currentChapterContent.WriteString(line)
+			currentChapterContent.WriteString("</p>\n")
 		} else {
 			if strings.Compare(matches[1], "title") == 0 {
 				book.SetTitle(matches[2])
