@@ -36,6 +36,27 @@ var (
 	rsaquo = "'"
 )
 
+var (
+	reChapter    = regexp.MustCompile(`^\s*(#)\s*([^#]+)$`)
+	reHeadlines  = regexp.MustCompile(`^\s*(#{2,6})\s*([^#]+)$`)
+	reDivider    = regexp.MustCompile(`^\s*([\*\-]\s*)+$`)
+	rePagebreak  = regexp.MustCompile(`^\s*(_\s*)+$`)
+	reMeta       = regexp.MustCompile(`\$\[(title|author|series|set|entry|uuid|language|quotes)\]\(([^\)]+)\)`)
+	reCover      = regexp.MustCompile(`\!\[cover\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
+	reImage      = regexp.MustCompile(`\!\[([^\]]*)\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
+	reQuotes     = regexp.MustCompile(`(%"|"%|%'|'%)`)
+	reBold       = regexp.MustCompile(`\*\*([^\*]+)\*\*`)
+	reItalic     = regexp.MustCompile(`\*([^\*]+)\*`)
+	reCode       = regexp.MustCompile("`([^`]+)`")
+	reComment    = regexp.MustCompile(`(^|\s)//.*$`)
+	reUlList     = regexp.MustCompile(`^\s*-\s*(.*)$`)
+	reLongDash   = regexp.MustCompile(`\s+(---)\s+`)
+	reMidDash    = regexp.MustCompile(`\s+(--)\s+`)
+	reThreeDots  = regexp.MustCompile(`(\.\.\.)`)
+	reBlockQuote = regexp.MustCompile("\\s*```\\s*([a-zA-Z]*)")
+	reNewline    = regexp.MustCompile(`\r?\n`)
+)
+
 // Add a chapter file to the book
 func addChapter(book *epub.EPub, chapterTitle string, chapterNumber int, chapterContent strings.Builder) error {
 	//htmlContent := markdownToHTML(chapterContent.String())
@@ -100,36 +121,17 @@ func addCover(book *epub.EPub, imageFile string, baseDir string, addCoverPage bo
 }
 
 func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) string {
-	// define regular expressions do detect commands
-	chapterRegex := regexp.MustCompile(`^\s*(#)\s*([^#]+)$`)
-	headlinesRegex := regexp.MustCompile(`^\s*(#{2,6})\s*([^#]+)$`)
-	dividerRegex := regexp.MustCompile(`^\s*([\*\-]\s*)+$`)
-	pagebreakRegex := regexp.MustCompile(`^\s*(_\s*)+$`)
-	metaRegex := regexp.MustCompile(`\$\[(title|author|series|set|entry|uuid|language|quotes)\]\(([^\)]+)\)`)
-	coverRegex := regexp.MustCompile(`\!\[cover\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
-	imageRegex := regexp.MustCompile(`\!\[([^\]]*)\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
-	quotesRegex := regexp.MustCompile(`(%"|"%|%'|'%)`)
-	boldRegex := regexp.MustCompile(`\*\*([^\*]+)\*\*`)
-	italicRegex := regexp.MustCompile(`\*([^\*]+)\*`)
-	codeRegex := regexp.MustCompile("`([^`]+)`")
-	commentRegex := regexp.MustCompile(`(^|\s)//.*$`)
-	ulListRegex := regexp.MustCompile(`^\s*-\s*(.*)$`)
-	longDashRegex := regexp.MustCompile(`\s+(---)\s+`)
-	midDashRegex := regexp.MustCompile(`\s+(--)\s+`)
-	threeDotsRegex := regexp.MustCompile(`(\.\.\.)`)
-	blockQuoteRegex := regexp.MustCompile("\\s*```\\s*([a-zA-Z]*)")
-
-	if inUlList && !ulListRegex.MatchString(line) && !insideBlock {
+	if inUlList && !reUlList.MatchString(line) && !insideBlock {
 		// End unordered List if open and no new list element
 		inUlList = false
 		return "</ul>\n" + parseLine(book, line, baseDir, false)
-	} else if blockQuoteRegex.MatchString(line) {
+	} else if reBlockQuote.MatchString(line) {
 		if inBlockType > 0 {
 			log.Printf("blockQuote schließen")
 			inBlockType = 0
 			return "</blockquote>\n"
 		} else {
-			matches := blockQuoteRegex.FindStringSubmatch(line)
+			matches := reBlockQuote.FindStringSubmatch(line)
 			blocktype := "code"
 			inBlockType = BLOCKTYPE_CODE
 			if len(matches) == 2 && matches[1] != "" {
@@ -156,14 +158,14 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 			log.Printf("blockQuote non CODE but parsed line")
 			return fmt.Sprintf("%s</br>\n", parseLine(book, line, baseDir, true))
 		}
-	} else if chapterRegex.MatchString(line) {
+	} else if reChapter.MatchString(line) {
 		// Chapter starting with one # char
 		if currentChapterTitle != "" {
 			addChapter(book, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
 		}
 
 		// New chapter headline
-		matches := chapterRegex.FindStringSubmatch(line)
+		matches := reChapter.FindStringSubmatch(line)
 		currentChapterTitle = parseLine(book, matches[2], baseDir, true)
 		currentChapterContent.Reset()
 		currentChapterNumber[1]++
@@ -172,9 +174,9 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		firstparagraph = true
 
 		return "<h1>" + parseLine(book, matches[2], baseDir, true) + "</h1>\n"
-	} else if headlinesRegex.MatchString(line) {
+	} else if reHeadlines.MatchString(line) {
 		// Headline with 2 or more #
-		matches := headlinesRegex.FindStringSubmatch(line)
+		matches := reHeadlines.FindStringSubmatch(line)
 		chapterLevel := strings.Count(matches[1], "#")
 		currentChapterNumber[chapterLevel]++
 		currentChapterLabel := fmt.Sprintf("label%d_%d", chapterLevel, currentChapterNumber[chapterLevel])
@@ -189,9 +191,9 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		}
 
 		return fmt.Sprintf("<h%d id=\"%s\">%s</h%d>\n", chapterLevel, currentChapterLabel, parseLine(book, matches[2], baseDir, true), chapterLevel)
-	} else if metaRegex.MatchString(line) {
+	} else if reMeta.MatchString(line) {
 		// Set meta variables
-		matches := metaRegex.FindStringSubmatch(line)
+		matches := reMeta.FindStringSubmatch(line)
 		if len(matches) < 2 {
 			log.Printf("Error setting meta %s to %s", matches[1], matches[2])
 			currentChapterContent.WriteString("<p>" + line + "</p>\n")
@@ -237,20 +239,20 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 				}
 			}
 		}
-	} else if coverRegex.MatchString(line) {
+	} else if reCover.MatchString(line) {
 		// Add cover image and page
-		matches := coverRegex.FindStringSubmatch(line)
+		matches := reCover.FindStringSubmatch(line)
 
 		err := addCover(book, matches[1], baseDir, *generateCover)
 
 		if err != nil {
 			log.Printf("Error including image %s with URI %s: %v", matches[0], filepath.Join(baseDir, matches[1]), err)
 		}
-	} else if imageRegex.MatchString(line) {
+	} else if reImage.MatchString(line) {
 		// Add image
-		line = imageRegex.ReplaceAllStringFunc(line, func(match string) string {
+		line = reImage.ReplaceAllStringFunc(line, func(match string) string {
 			// Extract includes and parameters
-			matches := imageRegex.FindStringSubmatch(match)
+			matches := reImage.FindStringSubmatch(match)
 			if len(matches) < 2 {
 				log.Printf("Error including %s with URI %s", matches[0], matches[2])
 				return match // Fallback: if the pattern is wrong
@@ -268,17 +270,15 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		})
 
 		return "<div>" + parseLine(book, line, baseDir, true) + "</div>\n"
-	} else if dividerRegex.MatchString(line) {
+	} else if reDivider.MatchString(line) {
 		// Add horizontal break
 		return "<hr/>\n"
-	} else if pagebreakRegex.MatchString(line) {
+	} else if rePagebreak.MatchString(line) {
 		// Add page break (not working on many ebook readers)
 		return `<MBP:PAGEBREAK/>` + "\n"
-	} else if quotesRegex.MatchString(line) {
-		// Add image
-		line = quotesRegex.ReplaceAllStringFunc(line, func(match string) string {
-			// Extract includes and parameters
-			matches := quotesRegex.FindStringSubmatch(match)
+	} else if reQuotes.MatchString(line) {
+		line = reQuotes.ReplaceAllStringFunc(line, func(match string) string {
+			matches := reQuotes.FindStringSubmatch(match)
 
 			switch sequence := matches[1]; sequence {
 			case `%"`:
@@ -295,9 +295,9 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		})
 
 		return parseLine(book, line, baseDir, insideBlock)
-	} else if ulListRegex.MatchString(line) {
+	} else if reUlList.MatchString(line) {
 		// List elements
-		matches := ulListRegex.FindStringSubmatch(line)
+		matches := reUlList.FindStringSubmatch(line)
 		newline := ""
 
 		if !inUlList {
@@ -309,54 +309,48 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 		newline = newline + "  <li>" + parseLine(book, matches[1], baseDir, true) + "</li>\n"
 
 		return newline
-	} else if boldRegex.MatchString(line) {
+	} else if reBold.MatchString(line) {
 		// Make text bold between ** and **
-		line = boldRegex.ReplaceAllStringFunc(line, func(match string) string {
-			matches := boldRegex.FindStringSubmatch(match)
+		line = reBold.ReplaceAllStringFunc(line, func(match string) string {
+			matches := reBold.FindStringSubmatch(match)
 			return "<b>" + parseLine(book, matches[1], baseDir, true) + "</b>"
 		})
 
 		return parseLine(book, line, baseDir, insideBlock)
-	} else if italicRegex.MatchString(line) {
+	} else if reItalic.MatchString(line) {
 		// Make text italic between * and *
-		line = italicRegex.ReplaceAllStringFunc(line, func(match string) string {
-			matches := italicRegex.FindStringSubmatch(match)
+		line = reItalic.ReplaceAllStringFunc(line, func(match string) string {
+			matches := reItalic.FindStringSubmatch(match)
 			return "<i>" + parseLine(book, matches[1], baseDir, true) + "</i>"
 		})
 
 		return parseLine(book, line, baseDir, insideBlock)
-	} else if codeRegex.MatchString(line) {
-		// Make text appear as code  between ` and `
-		line = codeRegex.ReplaceAllStringFunc(line, func(match string) string {
-			matches := codeRegex.FindStringSubmatch(match)
+	} else if reCode.MatchString(line) {
+		// Make text appear as code between ` and `
+		line = reCode.ReplaceAllStringFunc(line, func(match string) string {
+			matches := reCode.FindStringSubmatch(match)
 			return `<span class="code">` + matches[1] + "</span>"
 		})
 
 		return parseLine(book, line, baseDir, insideBlock)
-	} else if commentRegex.MatchString(line) {
+	} else if reComment.MatchString(line) {
 		// Remove comments starting with // but preserve leading whitespace and don't match ://
-		line = commentRegex.ReplaceAllString(line, "$1")
+		line = reComment.ReplaceAllString(line, "$1")
 
 		return parseLine(book, line, baseDir, insideBlock)
-	} else if longDashRegex.MatchString(line) {
+	} else if reLongDash.MatchString(line) {
 		// Replace --- with long dash
-		line = longDashRegex.ReplaceAllStringFunc(line, func(match string) string {
-			return "&nbsp;&mdash;&nbsp;"
-		})
+		line = reLongDash.ReplaceAllString(line, "&nbsp;&mdash;&nbsp;")
 
 		return parseLine(book, line, baseDir, insideBlock)
-	} else if midDashRegex.MatchString(line) {
+	} else if reMidDash.MatchString(line) {
 		// Replace -- with medium dash
-		line = midDashRegex.ReplaceAllStringFunc(line, func(match string) string {
-			return "&nbsp;&ndash;&nbsp;"
-		})
+		line = reMidDash.ReplaceAllString(line, "&nbsp;&ndash;&nbsp;")
 
 		return parseLine(book, line, baseDir, insideBlock)
-	} else if threeDotsRegex.MatchString(line) {
-		// Replace ... with typographic sign
-		line = threeDotsRegex.ReplaceAllStringFunc(line, func(match string) string {
-			return "&hellip;"
-		})
+	} else if reThreeDots.MatchString(line) {
+		// Replace ... with typographic ellipsis
+		line = reThreeDots.ReplaceAllString(line, "&hellip;")
 
 		return parseLine(book, line, baseDir, insideBlock)
 	} else if !insideBlock {
@@ -379,8 +373,7 @@ func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) s
 // Parse chapters and other Markdown commands
 func parseMarkdown(book *epub.EPub, content string, baseDir string) error {
 	// split contents by lines
-	splitRegex := regexp.MustCompile(`\r?\n`)
-	lines := splitRegex.Split(content, -1)
+	lines := reNewline.Split(content, -1)
 
 	addDefaultTemplate(book)
 
