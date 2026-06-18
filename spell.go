@@ -16,7 +16,7 @@ import (
 const (
 	title       = "spell"
 	description = "Smart Processing and Enhanced Lightweight Layout. Command line parser for converting enhanced markdown to epub."
-	version     = "v1.0.2"
+	version     = "v1.0.3"
 )
 
 var (
@@ -119,7 +119,7 @@ func main() {
 	// Process input file
 	err := processMarkdownFile(book, *inFileName)
 	if err != nil {
-		log.Fatalf("Fehler beim Verarbeiten der Datei '%s': %v", *inFileName, err)
+		log.Fatalf("Error processing file '%s': %v", *inFileName, err)
 	}
 
 	// Save epub
@@ -127,8 +127,8 @@ func main() {
 	book.SetVersion(float64(epubVersion))
 	err = book.Write(*outFileName)
 	if err != nil {
-		log.Fatalf("Fehler beim Speichern der EPUB-Datei '%s': %v", *outFileName, err)
+		log.Fatalf("Error writing EPUB file '%s': %v", *outFileName, err)
 	}
 
-	fmt.Printf("EPUB-Datei '%s' erfolgreich erstellt!\n", *outFileName)
+	fmt.Printf("EPUB file '%s' created successfully!\n", *outFileName)
 }
