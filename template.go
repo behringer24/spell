@@ -119,6 +119,6 @@ span.code {
 `
 
 func addDefaultTemplate(book *epub.EPub) {
-	book.AddStylesheet("css/styles.css", defaultCSS)
-	log.Print("Added default stylesheet css/styles.css")
+	book.AddStylesheet("css/_spellDefault.css", defaultCSS)
+	log.Print("Added default stylesheet css/_spellDefault.css")
 }

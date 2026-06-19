@@ -24,6 +24,7 @@ var (
 	outFileName   *string
 	generateVer   *string
 	generateCover *bool
+	customCSS     *string
 	showHelp      *bool
 	showVer       *bool
 )
@@ -63,7 +64,7 @@ func replaceAllIncludes(content string, baseDir string) string {
 }
 
 // Process Markdown file
-func processMarkdownFile(book *epub.EPub, filePath string) error {
+func processMarkdownFile(book *epub.EPub, filePath string, customCSSFile string) error {
 	// Read markdown file
 	content, err := readFile(filePath)
 	if err != nil {
@@ -75,7 +76,7 @@ func processMarkdownFile(book *epub.EPub, filePath string) error {
 	content = replaceAllIncludes(content, baseDir)
 
 	// Parse markdown
-	err = parseMarkdown(book, content, baseDir)
+	err = parseMarkdown(book, content, baseDir, customCSSFile)
 	if err != nil {
 		return err
 	}
@@ -90,6 +91,7 @@ func parseArgs() {
 	showVer = flags.Flags().AddBool("version", "v", "Show version information")
 	generateCover = flags.Flags().AddBool("cover", "c", "Generate cover page. This is normally not recommended")
 	generateVer = flags.Flags().AddString("epub", "e", false, "3", "Generate epub version 2 or 3")
+	customCSS = flags.Flags().AddString("style", "s", false, "", "Comma-separated list of CSS files to include")
 	inFileName = flags.Flags().AddPositional("infile", true, "", "File to read from")
 	outFileName = flags.Flags().AddPositional("outfile", false, "./ebook.epub", "File to write to")
 
@@ -117,7 +119,7 @@ func main() {
 	book := epub.New()
 
 	// Process input file
-	err := processMarkdownFile(book, *inFileName)
+	err := processMarkdownFile(book, *inFileName, *customCSS)
 	if err != nil {
 		log.Fatalf("Error processing file '%s': %v", *inFileName, err)
 	}
