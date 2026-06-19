@@ -57,6 +57,75 @@ var (
 	reNewline    = regexp.MustCompile(`\r?\n`)
 )
 
+// parseContext carries the epub book and base directory through the handler pipeline.
+type parseContext struct {
+	book    *epub.EPub
+	baseDir string
+}
+
+// lineHandler matches and transforms one line.
+// handle returns (output, done): if done the output is the final result,
+// otherwise output is the transformed line to pass back through the pipeline.
+type lineHandler struct {
+	match  func(line string, insideBlock bool) bool
+	handle func(ctx *parseContext, line string, insideBlock bool) (string, bool)
+}
+
+// replaceAndRecurse creates a handler that applies a regex substitution and continues the pipeline.
+func replaceAndRecurse(re *regexp.Regexp, replacement string) lineHandler {
+	return lineHandler{
+		match:  func(line string, _ bool) bool { return re.MatchString(line) },
+		handle: func(_ *parseContext, line string, _ bool) (string, bool) { return re.ReplaceAllString(line, replacement), false },
+	}
+}
+
+// staticResult creates a handler that returns a fixed HTML string for any matching line.
+func staticResult(re *regexp.Regexp, result string) lineHandler {
+	return lineHandler{
+		match:  func(line string, _ bool) bool { return re.MatchString(line) },
+		handle: func(_ *parseContext, _ string, _ bool) (string, bool) { return result, true },
+	}
+}
+
+// replaceEachAndRecurse creates a handler that transforms each regex match via fn and continues the pipeline.
+// fn receives (ctx, captureGroup1).
+func replaceEachAndRecurse(re *regexp.Regexp, fn func(*parseContext, string) string) lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return re.MatchString(line) },
+		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
+			return re.ReplaceAllStringFunc(line, func(match string) string {
+				return fn(ctx, re.FindStringSubmatch(match)[1])
+			}), false
+		},
+	}
+}
+
+var handlers []lineHandler
+
+func init() {
+	handlers = []lineHandler{
+		listCloseHandler(),
+		blockquoteFenceHandler(),
+		blockquoteContentHandler(),
+		chapterHandler(),
+		headlineHandler(),
+		metaHandler(),
+		coverHandler(),
+		imageHandler(),
+		dividerHandler(),
+		pagebreakHandler(),
+		quotesHandler(),
+		listItemHandler(),
+		boldHandler(),
+		italicHandler(),
+		codeSpanHandler(),
+		commentHandler(),
+		emDashHandler(),
+		enDashHandler(),
+		ellipsisHandler(),
+	}
+}
+
 // Add a chapter file to the book
 func addChapter(book *epub.EPub, chapterTitle string, chapterNumber int, chapterContent strings.Builder) error {
 	//htmlContent := markdownToHTML(chapterContent.String())
@@ -120,256 +189,24 @@ func addCover(book *epub.EPub, imageFile string, baseDir string, addCoverPage bo
 	return nil
 }
 
-func parseLine(book *epub.EPub, line string, baseDir string, insideBlock bool) string {
-	if inUlList && !reUlList.MatchString(line) && !insideBlock {
-		// End unordered List if open and no new list element
-		inUlList = false
-		return "</ul>\n" + parseLine(book, line, baseDir, false)
-	} else if reBlockQuote.MatchString(line) {
-		if inBlockType > 0 {
-			log.Printf("blockQuote schließen")
-			inBlockType = 0
-			return "</blockquote>\n"
-		} else {
-			matches := reBlockQuote.FindStringSubmatch(line)
-			blocktype := "code"
-			inBlockType = BLOCKTYPE_CODE
-			if len(matches) == 2 && matches[1] != "" {
-				blocktype = strings.ToLower(matches[1])
-
-				if blocktype == "cite" {
-					inBlockType = BLOCKTYPE_CITE
-				} else if blocktype == "note" {
-					inBlockType = BLOCKTYPE_NOTE
-				} else if blocktype == "info" {
-					inBlockType = BLOCKTYPE_INFO
-				} else if blocktype == "warn" {
-					inBlockType = BLOCKTYPE_WARN
-				}
+func parseLine(ctx *parseContext, line string, insideBlock bool) string {
+	for _, h := range handlers {
+		if h.match(line, insideBlock) {
+			output, done := h.handle(ctx, line, insideBlock)
+			if done {
+				return output
 			}
-			log.Printf("blockQuote opening: %s", blocktype)
-			return fmt.Sprintf("<blockquote class=\"%s\">\n", blocktype)
+			return parseLine(ctx, output, insideBlock)
 		}
-	} else if inBlockType != BLOCKTYPE_NONE && !insideBlock {
-		if inBlockType == BLOCKTYPE_CODE {
-			log.Printf("blockQuote CODE line")
-			return fmt.Sprintf("%s</br>\n", line)
-		} else {
-			log.Printf("blockQuote non CODE but parsed line")
-			return fmt.Sprintf("%s</br>\n", parseLine(book, line, baseDir, true))
-		}
-	} else if reChapter.MatchString(line) {
-		// Chapter starting with one # char
-		if currentChapterTitle != "" {
-			addChapter(book, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
-		}
-
-		// New chapter headline
-		matches := reChapter.FindStringSubmatch(line)
-		currentChapterTitle = parseLine(book, matches[2], baseDir, true)
-		currentChapterContent.Reset()
-		currentChapterNumber[1]++
-		filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", currentChapterNumber[1])
-		currentNavpoint[1] = book.AddNavpoint(currentChapterTitle, filename, 10)
-		firstparagraph = true
-
-		return "<h1>" + parseLine(book, matches[2], baseDir, true) + "</h1>\n"
-	} else if reHeadlines.MatchString(line) {
-		// Headline with 2 or more #
-		matches := reHeadlines.FindStringSubmatch(line)
-		chapterLevel := strings.Count(matches[1], "#")
-		currentChapterNumber[chapterLevel]++
-		currentChapterLabel := fmt.Sprintf("label%d_%d", chapterLevel, currentChapterNumber[chapterLevel])
-		firstparagraph = true
-
-		if currentNavpoint[chapterLevel-1] != nil {
-			anchorname := fmt.Sprintf("xhtml/chapter_%05d.xhtml#%s", currentChapterNumber[1], currentChapterLabel)
-			currentNavpoint[chapterLevel] = currentNavpoint[chapterLevel-1].AddNavpoint(parseLine(book, matches[2], baseDir, true), anchorname, 0)
-			log.Printf("Add subchapter %s as %s", matches[2], anchorname)
-		} else {
-			log.Printf("Subchapter %s outside chapter", matches[2])
-		}
-
-		return fmt.Sprintf("<h%d id=\"%s\">%s</h%d>\n", chapterLevel, currentChapterLabel, parseLine(book, matches[2], baseDir, true), chapterLevel)
-	} else if reMeta.MatchString(line) {
-		// Set meta variables
-		matches := reMeta.FindStringSubmatch(line)
-		if len(matches) < 2 {
-			log.Printf("Error setting meta %s to %s", matches[1], matches[2])
-			currentChapterContent.WriteString("<p>")
-			currentChapterContent.WriteString(line)
-			currentChapterContent.WriteString("</p>\n")
-		} else {
-			if strings.Compare(matches[1], "title") == 0 {
-				book.SetTitle(matches[2])
-			} else if strings.Compare(matches[1], "author") == 0 {
-				book.AddAuthor(matches[2])
-			} else if strings.Compare(matches[1], "series") == 0 {
-				err := book.SetSeries(matches[2])
-				if err != nil {
-					log.Printf("ERROR: Add series to %s: %v", matches[2], err)
-				}
-			} else if strings.Compare(matches[1], "set") == 0 {
-				err := book.SetSet(matches[2])
-				if err != nil {
-					log.Printf("ERROR: Add set to %s: %v", matches[2], err)
-				}
-			} else if strings.Compare(matches[1], "entry") == 0 {
-				err := book.SetEntryNumber(matches[2])
-				if err != nil {
-					log.Printf("ERROR: Add entry number to %s: %v", matches[2], err)
-				}
-			} else if strings.Compare(matches[1], "uuid") == 0 {
-				err := book.SetUUID(matches[2])
-				if err != nil {
-					log.Printf("ERROR: Set UUID to %s: %v", matches[2], err)
-				}
-			} else if strings.Compare(matches[1], "language") == 0 {
-				err := book.AddLanguage(matches[2])
-				if err != nil {
-					log.Printf("ERROR: Add language to %s: %v", matches[2], err)
-				}
-			} else if strings.Compare(matches[1], "quotes") == 0 {
-				quotes := strings.Split(matches[2], ",")
-				if len(quotes) != 4 {
-					log.Printf("ERROR: quotes definition has to have 4 values seperated by a colon %s %v", matches[2], quotes)
-				} else {
-					laquo = quotes[0]
-					raquo = quotes[1]
-					lsaquo = quotes[2]
-					rsaquo = quotes[3]
-				}
-			}
-		}
-	} else if reCover.MatchString(line) {
-		// Add cover image and page
-		matches := reCover.FindStringSubmatch(line)
-
-		err := addCover(book, matches[1], baseDir, *generateCover)
-
-		if err != nil {
-			log.Printf("Error including image %s with URI %s: %v", matches[0], filepath.Join(baseDir, matches[1]), err)
-		}
-	} else if reImage.MatchString(line) {
-		// Add image
-		line = reImage.ReplaceAllStringFunc(line, func(match string) string {
-			// Extract includes and parameters
-			matches := reImage.FindStringSubmatch(match)
-			if len(matches) < 2 {
-				log.Printf("Error including %s with URI %s", matches[0], matches[2])
-				return match // Fallback: if the pattern is wrong
-			}
-
-			currentImageId++
-			currentImage := fmt.Sprintf("img/image_%05d%s", currentImageId, filepath.Ext(matches[2]))
-			imageID, err := book.AddImageFile(filepath.Join(baseDir, matches[2]), currentImage)
-			if err != nil {
-				log.Printf("Error including image %s with URI %s: %v", matches[0], filepath.Join(baseDir, matches[2]), err)
-				return match
-			}
-			log.Printf("Including image %s: %s", imageID, currentImage)
-			return fmt.Sprintf(`<img title="%s" alt="%s" src="../%s"/>`, matches[4], matches[1], currentImage)
-		})
-
-		return "<div>" + parseLine(book, line, baseDir, true) + "</div>\n"
-	} else if reDivider.MatchString(line) {
-		// Add horizontal break
-		return "<hr/>\n"
-	} else if rePagebreak.MatchString(line) {
-		// Add page break (not working on many ebook readers)
-		return `<MBP:PAGEBREAK/>` + "\n"
-	} else if reQuotes.MatchString(line) {
-		line = reQuotes.ReplaceAllStringFunc(line, func(match string) string {
-			matches := reQuotes.FindStringSubmatch(match)
-
-			switch sequence := matches[1]; sequence {
-			case `%"`:
-				return laquo
-			case `"%`:
-				return raquo
-			case `%'`:
-				return lsaquo
-			case `'%`:
-				return rsaquo
-			default:
-				return sequence
-			}
-		})
-
-		return parseLine(book, line, baseDir, insideBlock)
-	} else if reUlList.MatchString(line) {
-		// List elements
-		matches := reUlList.FindStringSubmatch(line)
-		newline := ""
-
-		if !inUlList {
-			newline = "<ul>\n"
-			inUlList = true
-		}
-
-		log.Print("Add LI Element")
-		newline = newline + "  <li>" + parseLine(book, matches[1], baseDir, true) + "</li>\n"
-
-		return newline
-	} else if reBold.MatchString(line) {
-		// Make text bold between ** and **
-		line = reBold.ReplaceAllStringFunc(line, func(match string) string {
-			matches := reBold.FindStringSubmatch(match)
-			return "<b>" + parseLine(book, matches[1], baseDir, true) + "</b>"
-		})
-
-		return parseLine(book, line, baseDir, insideBlock)
-	} else if reItalic.MatchString(line) {
-		// Make text italic between * and *
-		line = reItalic.ReplaceAllStringFunc(line, func(match string) string {
-			matches := reItalic.FindStringSubmatch(match)
-			return "<i>" + parseLine(book, matches[1], baseDir, true) + "</i>"
-		})
-
-		return parseLine(book, line, baseDir, insideBlock)
-	} else if reCode.MatchString(line) {
-		// Make text appear as code between ` and `
-		line = reCode.ReplaceAllStringFunc(line, func(match string) string {
-			matches := reCode.FindStringSubmatch(match)
-			return `<span class="code">` + matches[1] + "</span>"
-		})
-
-		return parseLine(book, line, baseDir, insideBlock)
-	} else if reComment.MatchString(line) {
-		// Remove comments starting with // but preserve leading whitespace and don't match ://
-		line = reComment.ReplaceAllString(line, "$1")
-
-		return parseLine(book, line, baseDir, insideBlock)
-	} else if reLongDash.MatchString(line) {
-		// Replace --- with long dash
-		line = reLongDash.ReplaceAllString(line, "&nbsp;&mdash;&nbsp;")
-
-		return parseLine(book, line, baseDir, insideBlock)
-	} else if reMidDash.MatchString(line) {
-		// Replace -- with medium dash
-		line = reMidDash.ReplaceAllString(line, "&nbsp;&ndash;&nbsp;")
-
-		return parseLine(book, line, baseDir, insideBlock)
-	} else if reThreeDots.MatchString(line) {
-		// Replace ... with typographic ellipsis
-		line = reThreeDots.ReplaceAllString(line, "&hellip;")
-
-		return parseLine(book, line, baseDir, insideBlock)
-	} else if !insideBlock {
-		// Normal line just add if not empty
-		if len(strings.TrimSpace(line)) > 0 {
-			if firstparagraph {
-				firstparagraph = false
-				return "<p class=\"firstparagraph\">" + line + "</p>\n"
-			} else {
-				return "<p>" + line + "</p>\n"
-			}
-		}
-	} else {
-		return line
 	}
-
-	return ""
+	if !insideBlock && strings.TrimSpace(line) != "" {
+		if firstparagraph {
+			firstparagraph = false
+			return "<p class=\"firstparagraph\">" + line + "</p>\n"
+		}
+		return "<p>" + line + "</p>\n"
+	}
+	return line
 }
 
 // Parse chapters and other Markdown commands
@@ -379,8 +216,9 @@ func parseMarkdown(book *epub.EPub, content string, baseDir string) error {
 
 	addDefaultTemplate(book)
 
+	ctx := &parseContext{book: book, baseDir: baseDir}
 	for _, line := range lines {
-		newline := parseLine(book, line, baseDir, false)
+		newline := parseLine(ctx, line, false)
 		if len(strings.TrimSpace(newline)) > 0 {
 			currentChapterContent.WriteString(newline)
 		}
