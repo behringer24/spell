@@ -46,16 +46,18 @@ You can get a general help by calling:
 You will get a help overview over all command line parameters, like:
 ```
 spell
-Smart Processing and Enhanced Lightweight Layout
+Smart Processing and Enhanced Lightweight Layout. Command line parser for converting enhanced markdown to epub.
 
-Usage: spell [-h] [-v] [-e] infile [outfile]
+Usage: spell [-v] [-c] [-h] [-e] [-s] infile [outfile]
 
 Flags:
+-c, --cover              Generate cover page. This is normally not recommended
 -h, --help               Show this help text
 -v, --version            Show version information
 
 Options:
 -e, --epub               Generate epub version 2 or 3 (Default: 3)
+-s, --style              Comma-separated list of CSS files to include
 
 Positional arguments:
 infile                   File to read from
@@ -74,12 +76,12 @@ To check for the currently installed version:
 ```
 You will get a version number, like:
 ```
-SPELL version: v0.0.2
+SPELL version: v1.0.3
 ```
 
 ## Example
 You find an example-folder in this repo. Download all files and compile them with:
 ```
-./spell.exe example
+../spell.exe example
 ```
 The example shows a lot of the built in features of *spell*.
