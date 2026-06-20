@@ -48,16 +48,17 @@ You will get a help overview over all command line parameters, like:
 spell
 Smart Processing and Enhanced Lightweight Layout. Command line parser for converting enhanced markdown to epub.
 
-Usage: spell [-v] [-c] [-h] [-e] [-s] infile [outfile]
+Usage: spell [-h] [-v] [-c] [-V] [-e] [-s] infile [outfile]
 
 Flags:
--c, --cover              Generate cover page. This is normally not recommended
 -h, --help               Show this help text
 -v, --version            Show version information
+-c, --cover              Generate cover page. This is normally not recommended
+-V, --verbose            Enable verbose logging
 
 Options:
--e, --epub               Generate epub version 2 or 3 (Default: 3)
 -s, --style              Comma-separated list of CSS files to include
+-e, --epub               Generate epub version 2 or 3 (Default: 3)
 
 Positional arguments:
 infile                   File to read from
