@@ -59,7 +59,7 @@ func chapterHandler() lineHandler {
 		match: func(line string, insideBlock bool) bool { return reChapter.MatchString(line) },
 		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
 			if currentChapterTitle != "" {
-				addChapter(ctx.book, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
+				addChapter(ctx, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
 			}
 			matches := reChapter.FindStringSubmatch(line)
 			currentChapterTitle = parseLine(ctx, matches[2], true)

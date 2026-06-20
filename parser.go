@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -59,8 +60,9 @@ var (
 
 // parseContext carries the epub book and base directory through the handler pipeline.
 type parseContext struct {
-	book    *epub.EPub
-	baseDir string
+	book           *epub.EPub
+	baseDir        string
+	customCSSPaths []string // epub-internal paths (e.g. ["css/a.css", "css/b.css"])
 }
 
 // lineHandler matches and transforms one line.
@@ -127,22 +129,25 @@ func init() {
 }
 
 // Add a chapter file to the book
-func addChapter(book *epub.EPub, chapterTitle string, chapterNumber int, chapterContent strings.Builder) error {
-	//htmlContent := markdownToHTML(chapterContent.String())
+func addChapter(ctx *parseContext, chapterTitle string, chapterNumber int, chapterContent strings.Builder) error {
+	customCSSLinks := ""
+	for _, p := range ctx.customCSSPaths {
+		customCSSLinks += "\n\t\t<link rel=\"stylesheet\" href=\"../" + p + "\"/>"
+	}
 	htmlContent := `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE xhtml>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <title>` + chapterTitle + `</title>
-		<link rel="stylesheet" href="../css/styles.css"/>
+		<link rel="stylesheet" href="../css/_spellDefault.css"/>` + customCSSLinks + `
     </head>
     <body>
 	` + chapterContent.String() + `
 	</body>
 </html>`
 	filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", chapterNumber)
-	_, err := book.AddXHTML(filename, htmlContent, 10)
+	_, err := ctx.book.AddXHTML(filename, htmlContent, 10)
 	if err != nil {
 		return err
 	}
@@ -210,13 +215,26 @@ func parseLine(ctx *parseContext, line string, insideBlock bool) string {
 }
 
 // Parse chapters and other Markdown commands
-func parseMarkdown(book *epub.EPub, content string, baseDir string) error {
+func parseMarkdown(book *epub.EPub, content string, baseDir string, customCSSFile string) error {
 	// split contents by lines
 	lines := reNewline.Split(content, -1)
 
 	addDefaultTemplate(book)
 
 	ctx := &parseContext{book: book, baseDir: baseDir}
+	for _, cssFile := range strings.FieldsFunc(customCSSFile, func(r rune) bool { return r == ',' }) {
+		cssFile = strings.TrimSpace(cssFile)
+		cssContent, err := os.ReadFile(cssFile)
+		if err != nil {
+			log.Printf("WARNING: Could not read custom CSS file '%s': %v", cssFile, err)
+			continue
+		}
+		internalPath := "css/" + filepath.Base(cssFile)
+		book.AddStylesheet(internalPath, string(cssContent))
+		ctx.customCSSPaths = append(ctx.customCSSPaths, internalPath)
+		log.Printf("Added custom stylesheet %s", internalPath)
+	}
+
 	for _, line := range lines {
 		newline := parseLine(ctx, line, false)
 		if len(strings.TrimSpace(newline)) > 0 {
@@ -226,7 +244,7 @@ func parseMarkdown(book *epub.EPub, content string, baseDir string) error {
 
 	// Add last chapter
 	if currentChapterTitle != "" {
-		addChapter(book, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
+		addChapter(ctx, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
 	}
 
 	return nil
