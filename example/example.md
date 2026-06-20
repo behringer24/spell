@@ -10,7 +10,7 @@ $[quotes](&raquo;,&laquo;,&rsaquo;,&lsaquo;)
 # Title
 This is a test markdown to be translated to an ebook in epub3 format by spell.
 
-On Windows use:
+On Windows for example use:
 ```
 ..\spell.exe -s test.css example.md example.epub
 ```
