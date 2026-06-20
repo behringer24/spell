@@ -1,10 +1,6 @@
 package main
 
-import (
-	"log"
-
-	"github.com/writingtoole/epub"
-)
+import "github.com/writingtoole/epub"
 
 const defaultCSS = `// Default CSS
 body {
@@ -120,5 +116,5 @@ span.code {
 
 func addDefaultTemplate(book *epub.EPub) {
 	book.AddStylesheet("css/_spellDefault.css", defaultCSS)
-	log.Print("Added default stylesheet css/_spellDefault.css")
+	logMsg(LogVerbose, "Added default stylesheet css/_spellDefault.css")
 }

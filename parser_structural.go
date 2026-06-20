@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 	"strings"
 )
@@ -12,7 +11,7 @@ func blockquoteFenceHandler() lineHandler {
 		match: func(line string, insideBlock bool) bool { return reBlockQuote.MatchString(line) },
 		handle: func(_ *parseContext, line string, _ bool) (string, bool) {
 			if inBlockType > 0 {
-				log.Printf("blockQuote schließen")
+				logMsg(LogVerbose, "blockQuote schließen")
 				inBlockType = 0
 				return "</blockquote>\n", true
 			}
@@ -32,7 +31,7 @@ func blockquoteFenceHandler() lineHandler {
 					inBlockType = BLOCKTYPE_WARN
 				}
 			}
-			log.Printf("blockQuote opening: %s", blocktype)
+			logMsg(LogVerbose, "blockQuote opening: %s", blocktype)
 			return fmt.Sprintf("<blockquote class=\"%s\">\n", blocktype), true
 		},
 	}
@@ -45,10 +44,10 @@ func blockquoteContentHandler() lineHandler {
 		},
 		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
 			if inBlockType == BLOCKTYPE_CODE {
-				log.Printf("blockQuote CODE line")
+				logMsg(LogVerbose, "blockQuote CODE line")
 				return fmt.Sprintf("%s</br>\n", line), true
 			}
-			log.Printf("blockQuote non CODE but parsed line")
+			logMsg(LogVerbose, "blockQuote non CODE but parsed line")
 			return fmt.Sprintf("%s</br>\n", parseLine(ctx, line, true)), true
 		},
 	}
@@ -85,9 +84,9 @@ func headlineHandler() lineHandler {
 			if currentNavpoint[chapterLevel-1] != nil {
 				anchorname := fmt.Sprintf("xhtml/chapter_%05d.xhtml#%s", currentChapterNumber[1], currentChapterLabel)
 				currentNavpoint[chapterLevel] = currentNavpoint[chapterLevel-1].AddNavpoint(parseLine(ctx, matches[2], true), anchorname, 0)
-				log.Printf("Add subchapter %s as %s", matches[2], anchorname)
+				logMsg(LogVerbose, "Add subchapter %s as %s", matches[2], anchorname)
 			} else {
-				log.Printf("Subchapter %s outside chapter", matches[2])
+				logMsg(LogVerbose, "Subchapter %s outside chapter", matches[2])
 			}
 			return fmt.Sprintf("<h%d id=\"%s\">%s</h%d>\n", chapterLevel, currentChapterLabel, parseLine(ctx, matches[2], true), chapterLevel), true
 		},
@@ -100,7 +99,7 @@ func metaHandler() lineHandler {
 		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
 			matches := reMeta.FindStringSubmatch(line)
 			if len(matches) < 2 {
-				log.Printf("Error setting meta %s to %s", matches[1], matches[2])
+				logMsg(LogDefault,"Error setting meta %s to %s", matches[1], matches[2])
 				currentChapterContent.WriteString("<p>" + line + "</p>\n")
 				return "", true
 			}
@@ -111,28 +110,28 @@ func metaHandler() lineHandler {
 				ctx.book.AddAuthor(matches[2])
 			case "series":
 				if err := ctx.book.SetSeries(matches[2]); err != nil {
-					log.Printf("ERROR: Add series to %s: %v", matches[2], err)
+					logMsg(LogDefault,"ERROR: Add series to %s: %v", matches[2], err)
 				}
 			case "set":
 				if err := ctx.book.SetSet(matches[2]); err != nil {
-					log.Printf("ERROR: Add set to %s: %v", matches[2], err)
+					logMsg(LogDefault,"ERROR: Add set to %s: %v", matches[2], err)
 				}
 			case "entry":
 				if err := ctx.book.SetEntryNumber(matches[2]); err != nil {
-					log.Printf("ERROR: Add entry number to %s: %v", matches[2], err)
+					logMsg(LogDefault,"ERROR: Add entry number to %s: %v", matches[2], err)
 				}
 			case "uuid":
 				if err := ctx.book.SetUUID(matches[2]); err != nil {
-					log.Printf("ERROR: Set UUID to %s: %v", matches[2], err)
+					logMsg(LogDefault,"ERROR: Set UUID to %s: %v", matches[2], err)
 				}
 			case "language":
 				if err := ctx.book.AddLanguage(matches[2]); err != nil {
-					log.Printf("ERROR: Add language to %s: %v", matches[2], err)
+					logMsg(LogDefault,"ERROR: Add language to %s: %v", matches[2], err)
 				}
 			case "quotes":
 				quotes := strings.Split(matches[2], ",")
 				if len(quotes) != 4 {
-					log.Printf("ERROR: quotes definition has to have 4 values seperated by a colon %s %v", matches[2], quotes)
+					logMsg(LogDefault,"ERROR: quotes definition has to have 4 values seperated by a colon %s %v", matches[2], quotes)
 				} else {
 					laquo = quotes[0]
 					raquo = quotes[1]
@@ -151,7 +150,7 @@ func coverHandler() lineHandler {
 		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
 			matches := reCover.FindStringSubmatch(line)
 			if err := addCover(ctx.book, matches[1], ctx.baseDir, *generateCover); err != nil {
-				log.Printf("Error including image %s with URI %s: %v", matches[0], filepath.Join(ctx.baseDir, matches[1]), err)
+				logMsg(LogDefault,"Error including image %s with URI %s: %v", matches[0], filepath.Join(ctx.baseDir, matches[1]), err)
 			}
 			return "", true
 		},
@@ -165,17 +164,17 @@ func imageHandler() lineHandler {
 			transformed := reImage.ReplaceAllStringFunc(line, func(match string) string {
 				matches := reImage.FindStringSubmatch(match)
 				if len(matches) < 2 {
-					log.Printf("Error including %s with URI %s", matches[0], matches[2])
+					logMsg(LogDefault,"Error including %s with URI %s", matches[0], matches[2])
 					return match
 				}
 				currentImageId++
 				currentImage := fmt.Sprintf("img/image_%05d%s", currentImageId, filepath.Ext(matches[2]))
 				imageID, err := ctx.book.AddImageFile(filepath.Join(ctx.baseDir, matches[2]), currentImage)
 				if err != nil {
-					log.Printf("Error including image %s with URI %s: %v", matches[0], filepath.Join(ctx.baseDir, matches[2]), err)
+					logMsg(LogDefault,"Error including image %s with URI %s: %v", matches[0], filepath.Join(ctx.baseDir, matches[2]), err)
 					return match
 				}
-				log.Printf("Including image %s: %s", imageID, currentImage)
+				logMsg(LogVerbose, "Including image %s: %s", imageID, currentImage)
 				return fmt.Sprintf(`<img title="%s" alt="%s" src="../%s"/>`, matches[4], matches[1], currentImage)
 			})
 			return "<div>" + parseLine(ctx, transformed, true) + "</div>\n", true

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -151,7 +150,7 @@ func addChapter(ctx *parseContext, chapterTitle string, chapterNumber int, chapt
 	if err != nil {
 		return err
 	}
-	log.Printf("Add chapter %s as %s", chapterTitle, filename)
+	logMsg(LogDefault, "Add chapter %s as %s", chapterTitle, filename)
 	return nil
 }
 
@@ -162,7 +161,7 @@ func addCover(book *epub.EPub, imageFile string, baseDir string, addCoverPage bo
 		return err
 	} else {
 		book.SetCoverImage(imageID)
-		log.Printf("Added cover image %s: %s", imageID, currentImage)
+		logMsg(LogVerbose, "Added cover image %s: %s", imageID, currentImage)
 	}
 
 	if addCoverPage {
@@ -189,7 +188,7 @@ func addCover(book *epub.EPub, imageFile string, baseDir string, addCoverPage bo
 		if err != nil {
 			return err
 		}
-		log.Printf("Add cover file cover.xhtml")
+		logMsg(LogVerbose, "Add cover file cover.xhtml")
 	}
 	return nil
 }
@@ -226,13 +225,13 @@ func parseMarkdown(book *epub.EPub, content string, baseDir string, customCSSFil
 		cssFile = strings.TrimSpace(cssFile)
 		cssContent, err := os.ReadFile(cssFile)
 		if err != nil {
-			log.Printf("WARNING: Could not read custom CSS file '%s': %v", cssFile, err)
+			logMsg(LogDefault, "WARNING: Could not read custom CSS file '%s': %v", cssFile, err)
 			continue
 		}
 		internalPath := "css/" + filepath.Base(cssFile)
 		book.AddStylesheet(internalPath, string(cssContent))
 		ctx.customCSSPaths = append(ctx.customCSSPaths, internalPath)
-		log.Printf("Added custom stylesheet %s", internalPath)
+		logMsg(LogDefault, "Added custom stylesheet %s", internalPath)
 	}
 
 	for _, line := range lines {
