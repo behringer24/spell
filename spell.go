@@ -16,7 +16,7 @@ import (
 const (
 	title       = "spell"
 	description = "Smart Processing and Enhanced Lightweight Layout. Command line parser for converting enhanced markdown to epub."
-	version     = "v1.0.4"
+	version     = "v1.1.0"
 )
 
 var (
@@ -27,7 +27,19 @@ var (
 	customCSS     *string
 	showHelp      *bool
 	showVer       *bool
+	verboseFlag   *bool
 )
+
+const (
+	LogDefault = iota
+	LogVerbose
+)
+
+func logMsg(level int, format string, args ...any) {
+	if level == LogDefault || *verboseFlag {
+		log.Printf(format, args...)
+	}
+}
 
 // Function for reading a file
 func readFile(filename string) (string, error) {
@@ -48,17 +60,17 @@ func replaceAllIncludes(content string, baseDir string) string {
 		// Extract includes and parameters
 		matches := commandRegex.FindStringSubmatch(match)
 		if len(matches) < 2 && strings.Compare(filepath.Ext(matches[2]), ".md") != 0 {
-			log.Printf("Error including %s with URI %s", matches[0], matches[1])
+			logMsg(LogDefault, "Error including %s with URI %s", matches[0], matches[1])
 			return match // Fallback: if the pattern is wrong or not an md file
 		}
 
 		includeContent, err := readFile(filepath.Join(baseDir, matches[1]))
 		if err != nil {
-			log.Printf("Error including %s with URI %s: %v", matches[0], matches[1], err)
+			logMsg(LogDefault, "Error including %s with URI %s: %v", matches[0], matches[1], err)
 			return match
 		}
 
-		log.Printf("Including markdown file %s (%s)", matches[1], matches[3])
+		logMsg(LogVerbose, "Including markdown file %s (%s)", matches[1], matches[3])
 		return includeContent
 	})
 }
@@ -92,6 +104,7 @@ func parseArgs() {
 	generateCover = flags.Flags().AddBool("cover", "c", "Generate cover page. This is normally not recommended")
 	generateVer = flags.Flags().AddString("epub", "e", false, "3", "Generate epub version 2 or 3")
 	customCSS = flags.Flags().AddString("style", "s", false, "", "Comma-separated list of CSS files to include")
+	verboseFlag = flags.Flags().AddBool("verbose", "V", "Enable verbose logging")
 	inFileName = flags.Flags().AddPositional("infile", true, "", "File to read from")
 	outFileName = flags.Flags().AddPositional("outfile", false, "./ebook.epub", "File to write to")
 

@@ -1,6 +1,5 @@
 package main
 
-import "log"
 
 func listCloseHandler() lineHandler {
 	return lineHandler{
@@ -24,7 +23,7 @@ func listItemHandler() lineHandler {
 				newline = "<ul>\n"
 				inUlList = true
 			}
-			log.Print("Add LI Element")
+			logMsg(LogVerbose, "Add LI Element")
 			return newline + "  <li>" + parseLine(ctx, matches[1], true) + "</li>\n", true
 		},
 	}
