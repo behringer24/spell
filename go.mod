@@ -10,5 +10,3 @@ require (
 require (
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 )
-
-replace github.com/behringer24/epub => ../epub
