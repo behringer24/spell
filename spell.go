@@ -16,7 +16,7 @@ import (
 const (
 	title       = "spell"
 	description = "Smart Processing and Enhanced Lightweight Layout. Command line parser for converting enhanced markdown to epub."
-	version     = "v1.2.0"
+	version     = "v1.2.1"
 )
 
 var (
