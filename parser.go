@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/writingtoole/epub"
+	"github.com/behringer24/epub"
 )
 
 const (
@@ -75,8 +75,10 @@ type lineHandler struct {
 // replaceAndRecurse creates a handler that applies a regex substitution and continues the pipeline.
 func replaceAndRecurse(re *regexp.Regexp, replacement string) lineHandler {
 	return lineHandler{
-		match:  func(line string, _ bool) bool { return re.MatchString(line) },
-		handle: func(_ *parseContext, line string, _ bool) (string, bool) { return re.ReplaceAllString(line, replacement), false },
+		match: func(line string, _ bool) bool { return re.MatchString(line) },
+		handle: func(_ *parseContext, line string, _ bool) (string, bool) {
+			return re.ReplaceAllString(line, replacement), false
+		},
 	}
 }
 

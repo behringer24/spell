@@ -1,6 +1,6 @@
 package main
 
-import "github.com/writingtoole/epub"
+import "github.com/behringer24/epub"
 
 const defaultCSS = `// Default CSS
 body {
