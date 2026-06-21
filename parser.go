@@ -41,7 +41,7 @@ var (
 	reHeadlines  = regexp.MustCompile(`^\s*(#{2,6})\s*([^#]+)$`)
 	reDivider    = regexp.MustCompile(`^\s*([\*\-]\s*)+$`)
 	rePagebreak  = regexp.MustCompile(`^\s*(_\s*)+$`)
-	reMeta       = regexp.MustCompile(`\$\[(title|author|series|set|entry|uuid|language|quotes)\]\(([^\)]+)\)`)
+	reMeta       = regexp.MustCompile(`\$\[(title|author|series|set|entry|uuid|language|quotes|date|rights|source|relation|type)\]\(([^\)]+)\)`)
 	reCover      = regexp.MustCompile(`\!\[cover\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
 	reImage      = regexp.MustCompile(`\!\[([^\]]*)\]\(([^ \)]+)\s*(\"([^\"]*)\")?\)`)
 	reQuotes     = regexp.MustCompile(`(%"|"%|%'|'%)`)

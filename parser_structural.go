@@ -128,6 +128,16 @@ func metaHandler() lineHandler {
 				if err := ctx.book.AddLanguage(matches[2]); err != nil {
 					logMsg(LogDefault,"ERROR: Add language to %s: %v", matches[2], err)
 				}
+			case "date":
+				ctx.book.AddDate(matches[2])
+			case "rights":
+				ctx.book.AddRights(matches[2])
+			case "source":
+				ctx.book.AddSource(matches[2])
+			case "relation":
+				ctx.book.AddRelation(matches[2])
+			case "type":
+				ctx.book.AddType(matches[2])
 			case "quotes":
 				quotes := strings.Split(matches[2], ",")
 				if len(quotes) != 4 {
