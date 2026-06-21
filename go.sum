@@ -1,8 +1,6 @@
 github.com/behringer24/argumentative v1.0.2 h1:bnIsGlHlBbhsxdiGYZnHNOFWFaImn1wDuorWzuBQblM=
 github.com/behringer24/argumentative v1.0.2/go.mod h1:mKmcVSVU+m/XKIyXy6GClMh2atssqmKPm1LI/mJ8wyk=
-github.com/behringer24/epub v0.0.0-20260621092429-3755c55410d8 h1:YlDph0BUYm3bnTbGOfn9W2eD9rgLNYC3wrcfRAehW0A=
-github.com/behringer24/epub v0.0.0-20260621092429-3755c55410d8/go.mod h1:7i/vJuO47lbIT2zbzdnQbnZiP2bPen24WwcFkAo1PrE=
+github.com/behringer24/epub v0.0.0-20260621141158-9ac4456953bd h1:dV9XhhubAvfCY0efGPcup9qxi9R6/2hgQ0765t874sI=
+github.com/behringer24/epub v0.0.0-20260621141158-9ac4456953bd/go.mod h1:7i/vJuO47lbIT2zbzdnQbnZiP2bPen24WwcFkAo1PrE=
 github.com/gofrs/uuid v4.4.0+incompatible h1:3qXRTX8/NbyulANqlc0lchS1gqAVxRgsuW1YrTJupqA=
 github.com/gofrs/uuid v4.4.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
-github.com/writingtoole/epub v0.0.0-20231031001507-98e24b2790c3 h1:6G3LjJN8x77RivQJaqB8gsz3UsojwRVKkZEsj7QPdcI=
-github.com/writingtoole/epub v0.0.0-20231031001507-98e24b2790c3/go.mod h1:5i0iwKIbdM4qxUcUX8iZBbSfqxbeceAWBMz3i+vpluE=
