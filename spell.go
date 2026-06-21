@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/behringer24/argumentative"
-	"github.com/writingtoole/epub"
+	"github.com/behringer24/epub"
 )
 
 const (
