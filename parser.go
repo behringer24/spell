@@ -91,6 +91,55 @@ func staticResult(re *regexp.Regexp, result string) lineHandler {
 	}
 }
 
+// backtickSegments splits line into alternating non-code and code segments.
+// Even indices are outside backticks; odd indices are inside (including the backticks).
+func backtickSegments(line string) []string {
+	var segs []string
+	for len(line) > 0 {
+		tick := strings.Index(line, "`")
+		if tick == -1 {
+			segs = append(segs, line)
+			break
+		}
+		segs = append(segs, line[:tick])
+		line = line[tick:]
+		end := strings.Index(line[1:], "`")
+		if end == -1 {
+			segs = append(segs, line)
+			break
+		}
+		segs = append(segs, line[:end+2])
+		line = line[end+2:]
+	}
+	return segs
+}
+
+// matchOutsideBackticks returns true if re matches anywhere outside inline backtick spans.
+func matchOutsideBackticks(line string, re *regexp.Regexp) bool {
+	for i, seg := range backtickSegments(line) {
+		if i%2 == 0 && re.MatchString(seg) {
+			return true
+		}
+	}
+	return false
+}
+
+// replaceOutsideBackticks applies fn to every match of re, but only in segments of line
+// that are outside inline backtick spans. Backtick-delimited segments are passed through unchanged.
+func replaceOutsideBackticks(line string, re *regexp.Regexp, fn func([]string) string) string {
+	var result strings.Builder
+	for i, seg := range backtickSegments(line) {
+		if i%2 == 0 {
+			result.WriteString(re.ReplaceAllStringFunc(seg, func(m string) string {
+				return fn(re.FindStringSubmatch(m))
+			}))
+		} else {
+			result.WriteString(seg)
+		}
+	}
+	return result.String()
+}
+
 // replaceEachAndRecurse creates a handler that transforms each regex match via fn and continues the pipeline.
 // fn receives (ctx, captureGroup1).
 func replaceEachAndRecurse(re *regexp.Regexp, fn func(*parseContext, string) string) lineHandler {

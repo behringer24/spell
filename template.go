@@ -110,7 +110,29 @@ span.code {
 	font-family: monospace, monospace;
 	background-color: #aaa;
 	border-radius: 2px;
-	padding: 0.1em;	
+	padding: 0.1em;
+}
+span.index-entry {
+	font-style: italic;
+}
+ul.index-list {
+	list-style: none;
+	padding-left: 0;
+}
+ul.index-list li {
+	margin: 0.2em 0;
+}
+ul.index-list li ul {
+	display: inline;
+	list-style: none;
+	padding-left: 0;
+}
+ul.index-list li ul li {
+	display: inline;
+	margin-left: 0.3em;
+}
+ul.index-list li ul li a {
+	padding: 0.4em 0.5em;
 }
 `
 
