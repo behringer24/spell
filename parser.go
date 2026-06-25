@@ -259,14 +259,22 @@ func parseLine(ctx *parseContext, line string, insideBlock bool) string {
 			return parseLine(ctx, output, insideBlock)
 		}
 	}
-	if !insideBlock && strings.TrimSpace(line) != "" {
-		if firstparagraph {
-			firstparagraph = false
-			return "<p class=\"firstparagraph\">" + line + "</p>\n"
-		}
-		return "<p>" + line + "</p>\n"
-	}
 	return line
+}
+
+// isBlockElement returns true when s is a block-level HTML element that must
+// not be wrapped in a <p> tag.
+func isBlockElement(s string) bool {
+	for _, prefix := range []string{
+		"<h1", "<h2", "<h3", "<h4", "<h5", "<h6",
+		"<blockquote", "<hr", "<MBP:", "<div",
+		"<ul", "</ul>", "<li", "<section",
+	} {
+		if strings.HasPrefix(s, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // Parse chapters and other Markdown commands
@@ -295,12 +303,42 @@ func parseMarkdown(book *epub.EPub, content string, baseDir string, customCSSFil
 	}
 
 	// Pass 2: render.
-	for _, line := range lines {
-		newline := parseLine(ctx, line, false)
-		if len(strings.TrimSpace(newline)) > 0 {
-			currentChapterContent.WriteString(newline)
+	// Consecutive non-blank lines are accumulated into a single <p>; a blank line
+	// or a block-level element flushes the accumulator first.
+	var paraAccum []string
+
+	flushParagraph := func() {
+		if len(paraAccum) == 0 {
+			return
+		}
+		text := strings.Join(paraAccum, " ")
+		paraAccum = nil
+		if firstparagraph {
+			firstparagraph = false
+			currentChapterContent.WriteString("<p class=\"firstparagraph\">" + text + "</p>\n")
+		} else {
+			currentChapterContent.WriteString("<p>" + text + "</p>\n")
 		}
 	}
+
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			flushParagraph()
+			continue
+		}
+		newline := parseLine(ctx, line, false)
+		trimmed := strings.TrimSpace(newline)
+		if trimmed == "" {
+			continue
+		}
+		if isBlockElement(trimmed) {
+			flushParagraph()
+			currentChapterContent.WriteString(newline)
+		} else {
+			paraAccum = append(paraAccum, trimmed)
+		}
+	}
+	flushParagraph()
 
 	// Add last chapter
 	if currentChapterTitle != "" {
