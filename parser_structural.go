@@ -65,9 +65,122 @@ func chapterHandler() lineHandler {
 			currentChapterContent.Reset()
 			currentChapterNumber[1]++
 			filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", currentChapterNumber[1])
+			ctx.currentChapterFile = filename
 			currentNavpoint[1] = ctx.book.AddNavpoint(currentChapterTitle, filename, 10)
 			firstparagraph = true
 			return "<h1>" + parseLine(ctx, matches[2], true) + "</h1>\n", true
+		},
+	}
+}
+
+// anchorDefHandler renders {#id} as an invisible span with that id.
+func anchorDefHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return reAnchorDef.MatchString(line) },
+		handle: func(ctx *parseContext, line string, insideBlock bool) (string, bool) {
+			out := reAnchorDef.ReplaceAllStringFunc(line, func(m string) string {
+				id := reAnchorDef.FindStringSubmatch(m)[1]
+				return fmt.Sprintf(`<span id="%s"></span>`, id)
+			})
+			return parseLine(ctx, out, insideBlock), true
+		},
+	}
+}
+
+// anchorLinkHandler renders [text](#id) as an internal epub hyperlink.
+func anchorLinkHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return reAnchorLink.MatchString(line) },
+		handle: func(ctx *parseContext, line string, insideBlock bool) (string, bool) {
+			out := reAnchorLink.ReplaceAllStringFunc(line, func(m string) string {
+				sub := reAnchorLink.FindStringSubmatch(m)
+				text, id := sub[1], sub[2]
+				href := resolveAnchorHref(id, ctx.currentChapterFile)
+				return fmt.Sprintf(`<a href="%s">%s</a>`, href, text)
+			})
+			return parseLine(ctx, out, insideBlock), true
+		},
+	}
+}
+
+// indexEntryHandler renders %[term](indexname) as a classed span with a stable id.
+func indexEntryHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return reIndexEntry.MatchString(line) },
+		handle: func(ctx *parseContext, line string, insideBlock bool) (string, bool) {
+			out := reIndexEntry.ReplaceAllStringFunc(line, func(m string) string {
+				sub := reIndexEntry.FindStringSubmatch(m)
+				term, indexName := sub[1], sub[2]
+				key := indexName + "\x00" + term
+				seq := indexCounters[key]
+				indexCounters[key]++
+				htmlID := fmt.Sprintf("idx-%s-%s-%d", sanitizeID(indexName), sanitizeID(term), seq)
+				return fmt.Sprintf(`<span id="%s" class="index-entry">%s</span>`, htmlID, term)
+			})
+			return parseLine(ctx, out, insideBlock), true
+		},
+	}
+}
+
+// indexOutputHandler renders %index[name] as a new chapter listing all entries for that index.
+func indexOutputHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return reIndexOutput.MatchString(line) },
+		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
+			sub := reIndexOutput.FindStringSubmatch(line)
+			indexName := sub[1]
+			entries, ok := indexes[indexName]
+			if !ok || len(entries) == 0 {
+				logMsg(LogDefault, "WARNING: no index entries found for %q", indexName)
+				return "", true
+			}
+
+			// Flush current chapter before starting the index chapter.
+			if currentChapterTitle != "" {
+				addChapter(ctx, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
+				currentChapterTitle = ""
+				currentChapterContent.Reset()
+			}
+
+			currentChapterNumber[1]++
+			filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", currentChapterNumber[1])
+			ctx.currentChapterFile = filename
+
+			var body strings.Builder
+			body.WriteString(fmt.Sprintf("<h1>%s</h1>\n<ul class=\"index-list\">\n", indexName))
+			for _, e := range entries {
+				var href string
+				if e.chapterFile == filename {
+					href = "#" + e.htmlID
+				} else {
+					href = "../" + e.chapterFile + "#" + e.htmlID
+				}
+				body.WriteString(fmt.Sprintf("  <li><a href=\"%s\">%s</a></li>\n", href, e.term))
+			}
+			body.WriteString("</ul>\n")
+
+			customCSSLinks := ""
+			for _, p := range ctx.customCSSPaths {
+				customCSSLinks += "\n\t\t<link rel=\"stylesheet\" href=\"../" + p + "\"/>"
+			}
+			htmlContent := `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xhtml>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <title>` + indexName + `</title>
+		<link rel="stylesheet" href="../css/_spellDefault.css"/>` + customCSSLinks + `
+    </head>
+    <body>
+	` + body.String() + `
+	</body>
+</html>`
+			if _, err := ctx.book.AddXHTML(filename, htmlContent, 10); err != nil {
+				logMsg(LogDefault, "ERROR: writing index chapter %s: %v", filename, err)
+			}
+			currentNavpoint[1] = ctx.book.AddNavpoint(indexName, filename, 10)
+			logMsg(LogDefault, "Add index %q as %s", indexName, filename)
+			return "", true
 		},
 	}
 }

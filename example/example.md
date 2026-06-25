@@ -98,3 +98,23 @@ with two lines
 ```
 
 Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+
+# Anchor and Index Demo
+
+{#important-chapter}
+This chapter has link anchors. %[Steam engine](Technology) was a very important invention.
+
+Here is a link to the next section: [Jump to link demo](#link-demo)
+
+# Link Demo
+
+{#link-demo}
+Here we are. Back to [the important chapter](#important-chapter).
+
+%[Electricity](Technology) and %[mechanic](Technology) are more words in the index.
+
+%[Goethe](Persons) and %[Schiller](Persons) are well known authors.
+
+%index[Technology]
+
+%index[Persons]

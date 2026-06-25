@@ -59,9 +59,10 @@ var (
 
 // parseContext carries the epub book and base directory through the handler pipeline.
 type parseContext struct {
-	book           *epub.EPub
-	baseDir        string
-	customCSSPaths []string // epub-internal paths (e.g. ["css/a.css", "css/b.css"])
+	book              *epub.EPub
+	baseDir           string
+	customCSSPaths    []string // epub-internal paths (e.g. ["css/a.css", "css/b.css"])
+	currentChapterFile string  // filename of the chapter currently being rendered
 }
 
 // lineHandler matches and transforms one line.
@@ -115,6 +116,10 @@ func init() {
 		metaHandler(),
 		coverHandler(),
 		imageHandler(),
+		indexOutputHandler(),
+		anchorDefHandler(),
+		anchorLinkHandler(),
+		indexEntryHandler(),
 		dividerHandler(),
 		pagebreakHandler(),
 		quotesHandler(),
@@ -217,6 +222,10 @@ func parseLine(ctx *parseContext, line string, insideBlock bool) string {
 
 // Parse chapters and other Markdown commands
 func parseMarkdown(book *epub.EPub, content string, baseDir string, customCSSFile string) error {
+	// Pass 1: collect all anchors and index entries before rendering.
+	resetAnchors()
+	scanAnchorsAndIndex(content)
+
 	// split contents by lines
 	lines := reNewline.Split(content, -1)
 
@@ -236,6 +245,7 @@ func parseMarkdown(book *epub.EPub, content string, baseDir string, customCSSFil
 		logMsg(LogDefault, "Added custom stylesheet %s", internalPath)
 	}
 
+	// Pass 2: render.
 	for _, line := range lines {
 		newline := parseLine(ctx, line, false)
 		if len(strings.TrimSpace(newline)) > 0 {
