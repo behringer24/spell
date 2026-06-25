@@ -119,7 +119,7 @@ func indexEntryHandler() lineHandler {
 				seq := indexCounters[key]
 				indexCounters[key]++
 				htmlID := fmt.Sprintf("idx-%s-%s-%d", sanitizeID(indexName), sanitizeID(canonical), seq)
-				return fmt.Sprintf(`<span id="%s" class="index-entry">%s</span>`, htmlID, displayTerm)
+				return fmt.Sprintf(`<span id="%s" class="index-entry" epub:type="index-term">%s</span>`, htmlID, displayTerm)
 			})
 			return parseLine(ctx, out, insideBlock), true
 		},
@@ -172,7 +172,7 @@ func indexOutputHandler() lineHandler {
 			}
 
 			var body strings.Builder
-			body.WriteString(fmt.Sprintf("<h1>%s</h1>\n<ul class=\"index-list\">\n", title))
+			body.WriteString(fmt.Sprintf("<section epub:type=\"index\">\n<h1>%s</h1>\n<ul epub:type=\"index-entry-list\" class=\"index-list\">\n", title))
 			for i, g := range groups {
 				if len(g.entries) == 1 {
 					e := g.entries[0]
@@ -182,10 +182,10 @@ func indexOutputHandler() lineHandler {
 					} else {
 						href = "../" + e.chapterFile + "#" + e.htmlID
 					}
-					body.WriteString(fmt.Sprintf("  <li><a href=\"%s\">%s</a></li>\n", href, g.canonical))
+					body.WriteString(fmt.Sprintf("  <li epub:type=\"index-entry\"><span epub:type=\"index-term\">%s</span> <a epub:type=\"index-locator\" href=\"%s\">1</a></li>\n", g.canonical, href))
 				} else {
 					// Multiple occurrences: list canonical term once, link each occurrence.
-					body.WriteString(fmt.Sprintf("  <li><span class=\"index-canonical\">%s</span>\n    <ul>\n", g.canonical))
+					body.WriteString(fmt.Sprintf("  <li epub:type=\"index-entry\"><span epub:type=\"index-term\" class=\"index-canonical\">%s</span>\n    <ul epub:type=\"index-locator-list\">\n", g.canonical))
 					for j, e := range g.entries {
 						var href string
 						if e.chapterFile == filename {
@@ -193,13 +193,13 @@ func indexOutputHandler() lineHandler {
 						} else {
 							href = "../" + e.chapterFile + "#" + e.htmlID
 						}
-						body.WriteString(fmt.Sprintf("      <li><a href=\"%s\">%d</a></li>\n", href, j+1))
+						body.WriteString(fmt.Sprintf("      <li epub:type=\"index-locator\"><a href=\"%s\">%d</a></li>\n", href, j+1))
 					}
 					body.WriteString("    </ul>\n  </li>\n")
 				}
 				_ = i
 			}
-			body.WriteString("</ul>\n")
+			body.WriteString("</ul>\n</section>\n")
 
 			customCSSLinks := ""
 			for _, p := range ctx.customCSSPaths {
