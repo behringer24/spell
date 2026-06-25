@@ -59,9 +59,10 @@ var (
 
 // parseContext carries the epub book and base directory through the handler pipeline.
 type parseContext struct {
-	book           *epub.EPub
-	baseDir        string
-	customCSSPaths []string // epub-internal paths (e.g. ["css/a.css", "css/b.css"])
+	book              *epub.EPub
+	baseDir           string
+	customCSSPaths    []string // epub-internal paths (e.g. ["css/a.css", "css/b.css"])
+	currentChapterFile string  // filename of the chapter currently being rendered
 }
 
 // lineHandler matches and transforms one line.
@@ -90,6 +91,55 @@ func staticResult(re *regexp.Regexp, result string) lineHandler {
 	}
 }
 
+// backtickSegments splits line into alternating non-code and code segments.
+// Even indices are outside backticks; odd indices are inside (including the backticks).
+func backtickSegments(line string) []string {
+	var segs []string
+	for len(line) > 0 {
+		tick := strings.Index(line, "`")
+		if tick == -1 {
+			segs = append(segs, line)
+			break
+		}
+		segs = append(segs, line[:tick])
+		line = line[tick:]
+		end := strings.Index(line[1:], "`")
+		if end == -1 {
+			segs = append(segs, line)
+			break
+		}
+		segs = append(segs, line[:end+2])
+		line = line[end+2:]
+	}
+	return segs
+}
+
+// matchOutsideBackticks returns true if re matches anywhere outside inline backtick spans.
+func matchOutsideBackticks(line string, re *regexp.Regexp) bool {
+	for i, seg := range backtickSegments(line) {
+		if i%2 == 0 && re.MatchString(seg) {
+			return true
+		}
+	}
+	return false
+}
+
+// replaceOutsideBackticks applies fn to every match of re, but only in segments of line
+// that are outside inline backtick spans. Backtick-delimited segments are passed through unchanged.
+func replaceOutsideBackticks(line string, re *regexp.Regexp, fn func([]string) string) string {
+	var result strings.Builder
+	for i, seg := range backtickSegments(line) {
+		if i%2 == 0 {
+			result.WriteString(re.ReplaceAllStringFunc(seg, func(m string) string {
+				return fn(re.FindStringSubmatch(m))
+			}))
+		} else {
+			result.WriteString(seg)
+		}
+	}
+	return result.String()
+}
+
 // replaceEachAndRecurse creates a handler that transforms each regex match via fn and continues the pipeline.
 // fn receives (ctx, captureGroup1).
 func replaceEachAndRecurse(re *regexp.Regexp, fn func(*parseContext, string) string) lineHandler {
@@ -115,6 +165,10 @@ func init() {
 		metaHandler(),
 		coverHandler(),
 		imageHandler(),
+		indexOutputHandler(),
+		anchorDefHandler(),
+		anchorLinkHandler(),
+		indexEntryHandler(),
 		dividerHandler(),
 		pagebreakHandler(),
 		quotesHandler(),
@@ -205,18 +259,30 @@ func parseLine(ctx *parseContext, line string, insideBlock bool) string {
 			return parseLine(ctx, output, insideBlock)
 		}
 	}
-	if !insideBlock && strings.TrimSpace(line) != "" {
-		if firstparagraph {
-			firstparagraph = false
-			return "<p class=\"firstparagraph\">" + line + "</p>\n"
-		}
-		return "<p>" + line + "</p>\n"
-	}
 	return line
+}
+
+// isBlockElement returns true when s is a block-level HTML element that must
+// not be wrapped in a <p> tag.
+func isBlockElement(s string) bool {
+	for _, prefix := range []string{
+		"<h1", "<h2", "<h3", "<h4", "<h5", "<h6",
+		"<blockquote", "<hr", "<MBP:", "<div",
+		"<ul", "</ul>", "<li", "<section",
+	} {
+		if strings.HasPrefix(s, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // Parse chapters and other Markdown commands
 func parseMarkdown(book *epub.EPub, content string, baseDir string, customCSSFile string) error {
+	// Pass 1: collect all anchors and index entries before rendering.
+	resetAnchors()
+	scanAnchorsAndIndex(content)
+
 	// split contents by lines
 	lines := reNewline.Split(content, -1)
 
@@ -236,12 +302,43 @@ func parseMarkdown(book *epub.EPub, content string, baseDir string, customCSSFil
 		logMsg(LogDefault, "Added custom stylesheet %s", internalPath)
 	}
 
-	for _, line := range lines {
-		newline := parseLine(ctx, line, false)
-		if len(strings.TrimSpace(newline)) > 0 {
-			currentChapterContent.WriteString(newline)
+	// Pass 2: render.
+	// Consecutive non-blank lines are accumulated into a single <p>; a blank line
+	// or a block-level element flushes the accumulator first.
+	var paraAccum []string
+
+	flushParagraph := func() {
+		if len(paraAccum) == 0 {
+			return
+		}
+		text := strings.Join(paraAccum, " ")
+		paraAccum = nil
+		if firstparagraph {
+			firstparagraph = false
+			currentChapterContent.WriteString("<p class=\"firstparagraph\">" + text + "</p>\n")
+		} else {
+			currentChapterContent.WriteString("<p>" + text + "</p>\n")
 		}
 	}
+
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			flushParagraph()
+			continue
+		}
+		newline := parseLine(ctx, line, false)
+		trimmed := strings.TrimSpace(newline)
+		if trimmed == "" {
+			continue
+		}
+		if isBlockElement(trimmed) {
+			flushParagraph()
+			currentChapterContent.WriteString(newline)
+		} else {
+			paraAccum = append(paraAccum, trimmed)
+		}
+	}
+	flushParagraph()
 
 	// Add last chapter
 	if currentChapterTitle != "" {

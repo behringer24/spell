@@ -65,9 +65,164 @@ func chapterHandler() lineHandler {
 			currentChapterContent.Reset()
 			currentChapterNumber[1]++
 			filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", currentChapterNumber[1])
+			ctx.currentChapterFile = filename
 			currentNavpoint[1] = ctx.book.AddNavpoint(currentChapterTitle, filename, 10)
 			firstparagraph = true
 			return "<h1>" + parseLine(ctx, matches[2], true) + "</h1>\n", true
+		},
+	}
+}
+
+// anchorDefHandler renders {#id} as an invisible span with that id.
+// Matches inside backtick code spans are left untouched.
+func anchorDefHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return matchOutsideBackticks(line, reAnchorDef) },
+		handle: func(ctx *parseContext, line string, insideBlock bool) (string, bool) {
+			out := replaceOutsideBackticks(line, reAnchorDef, func(sub []string) string {
+				return fmt.Sprintf(`<span id="%s"></span>`, sub[1])
+			})
+			return parseLine(ctx, out, insideBlock), true
+		},
+	}
+}
+
+// anchorLinkHandler renders [text](#id) as an internal epub hyperlink.
+// Matches inside backtick code spans are left untouched.
+func anchorLinkHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return matchOutsideBackticks(line, reAnchorLink) },
+		handle: func(ctx *parseContext, line string, insideBlock bool) (string, bool) {
+			out := replaceOutsideBackticks(line, reAnchorLink, func(sub []string) string {
+				href := resolveAnchorHref(sub[2], ctx.currentChapterFile)
+				return fmt.Sprintf(`<a href="%s">%s</a>`, href, sub[1])
+			})
+			return parseLine(ctx, out, insideBlock), true
+		},
+	}
+}
+
+// indexEntryHandler renders %[displayTerm](indexname) or %[displayTerm](indexname|canonical)
+// as a classed span with a stable id. The display term appears in the text; the canonical
+// term (after |) is used as the index key for grouping variants like singular/plural.
+// Matches inside backtick code spans are left untouched.
+func indexEntryHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return matchOutsideBackticks(line, reIndexEntry) },
+		handle: func(ctx *parseContext, line string, insideBlock bool) (string, bool) {
+			out := replaceOutsideBackticks(line, reIndexEntry, func(sub []string) string {
+				displayTerm, indexName, canonical := sub[1], sub[2], sub[3]
+				if canonical == "" {
+					canonical = displayTerm
+				}
+				key := indexName + "\x00" + canonical
+				seq := indexCounters[key]
+				indexCounters[key]++
+				htmlID := fmt.Sprintf("idx-%s-%s-%d", sanitizeID(indexName), sanitizeID(canonical), seq)
+				return fmt.Sprintf(`<span id="%s" class="index-entry" epub:type="index-term">%s</span>`, htmlID, displayTerm)
+			})
+			return parseLine(ctx, out, insideBlock), true
+		},
+	}
+}
+
+// indexOutputHandler renders %index[name] or %index[name](Title) as a new chapter.
+// Entries are grouped by their canonical term; each group shows the canonical term
+// as a label followed by links to every occurrence in the text.
+func indexOutputHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return reIndexOutput.MatchString(line) },
+		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
+			sub := reIndexOutput.FindStringSubmatch(line)
+			indexName, title := sub[1], sub[2]
+			if title == "" {
+				title = indexName
+			}
+			entries, ok := indexes[indexName]
+			if !ok || len(entries) == 0 {
+				logMsg(LogDefault, "WARNING: no index entries found for %q", indexName)
+				return "", true
+			}
+
+			// Flush current chapter before starting the index chapter.
+			if currentChapterTitle != "" {
+				addChapter(ctx, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
+				currentChapterTitle = ""
+				currentChapterContent.Reset()
+			}
+
+			currentChapterNumber[1]++
+			filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", currentChapterNumber[1])
+			ctx.currentChapterFile = filename
+
+			// Group entries by canonical term, preserving first-seen order.
+			type group struct {
+				canonical string
+				entries   []indexEntry
+			}
+			seen := map[string]int{}
+			var groups []group
+			for _, e := range entries {
+				if idx, exists := seen[e.canonical]; exists {
+					groups[idx].entries = append(groups[idx].entries, e)
+				} else {
+					seen[e.canonical] = len(groups)
+					groups = append(groups, group{canonical: e.canonical, entries: []indexEntry{e}})
+				}
+			}
+
+			var body strings.Builder
+			body.WriteString(fmt.Sprintf("<section epub:type=\"index\">\n<h1>%s</h1>\n<ul epub:type=\"index-entry-list\" class=\"index-list\">\n", title))
+			for i, g := range groups {
+				if len(g.entries) == 1 {
+					e := g.entries[0]
+					var href string
+					if e.chapterFile == filename {
+						href = "#" + e.htmlID
+					} else {
+						href = "../" + e.chapterFile + "#" + e.htmlID
+					}
+					body.WriteString(fmt.Sprintf("  <li epub:type=\"index-entry\"><span epub:type=\"index-term\">%s</span> <a epub:type=\"index-locator\" href=\"%s\">1</a></li>\n", g.canonical, href))
+				} else {
+					// Multiple occurrences: list canonical term once, link each occurrence.
+					body.WriteString(fmt.Sprintf("  <li epub:type=\"index-entry\"><span epub:type=\"index-term\" class=\"index-canonical\">%s</span>\n    <ul epub:type=\"index-locator-list\">\n", g.canonical))
+					for j, e := range g.entries {
+						var href string
+						if e.chapterFile == filename {
+							href = "#" + e.htmlID
+						} else {
+							href = "../" + e.chapterFile + "#" + e.htmlID
+						}
+						body.WriteString(fmt.Sprintf("      <li epub:type=\"index-locator\"><a href=\"%s\">%d</a></li>\n", href, j+1))
+					}
+					body.WriteString("    </ul>\n  </li>\n")
+				}
+				_ = i
+			}
+			body.WriteString("</ul>\n</section>\n")
+
+			customCSSLinks := ""
+			for _, p := range ctx.customCSSPaths {
+				customCSSLinks += "\n\t\t<link rel=\"stylesheet\" href=\"../" + p + "\"/>"
+			}
+			htmlContent := `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xhtml>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <title>` + title + `</title>
+		<link rel="stylesheet" href="../css/_spellDefault.css"/>` + customCSSLinks + `
+    </head>
+    <body>
+	` + body.String() + `
+	</body>
+</html>`
+			if _, err := ctx.book.AddXHTML(filename, htmlContent, 10); err != nil {
+				logMsg(LogDefault, "ERROR: writing index chapter %s: %v", filename, err)
+			}
+			currentNavpoint[1] = ctx.book.AddNavpoint(title, filename, 10)
+			logMsg(LogDefault, "Add index %q (%s) as %s", indexName, title, filename)
+			return "", true
 		},
 	}
 }

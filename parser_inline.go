@@ -1,5 +1,7 @@
 package main
 
+import "strings"
+
 func quotesHandler() lineHandler {
 	return replaceEachAndRecurse(reQuotes, func(_ *parseContext, marker string) string {
 		switch marker {
@@ -31,6 +33,13 @@ func italicHandler() lineHandler {
 
 func codeSpanHandler() lineHandler {
 	return replaceEachAndRecurse(reCode, func(_ *parseContext, inner string) string {
+		// Encode spell-specific trigger characters so that anchor/index handlers
+		// cannot match content that was written as inline code.
+		inner = strings.ReplaceAll(inner, "%", "&#37;")
+		inner = strings.ReplaceAll(inner, "{", "&#123;")
+		inner = strings.ReplaceAll(inner, "}", "&#125;")
+		inner = strings.ReplaceAll(inner, "[", "&#91;")
+		inner = strings.ReplaceAll(inner, "]", "&#93;")
 		return `<span class="code">` + inner + "</span>"
 	})
 }

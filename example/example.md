@@ -1,100 +1,137 @@
-$[title](My Booktitle)
-$[author](John Doe)
+$[title](Spell Example Book)
+$[author](Jane Doe)
 $[language](EN)
 $[uuid](18b04cfb-6d81-405f-833f-aa5182212bbb)
-$[series](My Series)
-$[date](2026-06-21)
-$[rights](© 2026 John Doe. All rights reserved.)
-$[source](https://example.com/original)
-$[relation](https://example.com/related)
+$[series](Spell Demos)
+$[date](2026-06-25)
+$[rights](© 2026 Jane Doe. All rights reserved.)
+$[source](https://github.com/behringer24/spell)
+$[relation](https://github.com/behringer24/spell/wiki)
 $[type](Text)
-$[entry](2)
+$[entry](1)
 $[quotes](&raquo;,&laquo;,&rsaquo;,&lsaquo;)
 ![cover](cover.jpg "Cover image")
 
-# Title
-This is a test markdown to be translated to an ebook in epub3 format by spell.
+# Introduction
 
-On Windows for example use:
+This book demonstrates the features of the **spell** markdown-to-epub converter.
+
+Build this file on Windows with:
 ```
-..\spell.exe -s test.css example.md example.epub
+..\spell.exe example.md example.epub
+```
+
+Or with a custom stylesheet:
+```
+..\spell.exe -s custom.css example.md example.epub
 ```
 
 For more details see: https://github.com/behringer24/spell
 
-Testing a List:
-- Item 1 // Comment
-- Item 2
-- Item 3
+# Text Formatting
 
-- Item 4
-- Item 5
-// Comment
--Item 6
-// Comment
+Spell supports the usual inline formatting: **bold**, *italic* and `inline code`.
 
-# This is a first %"chapter"% // Kommentar 4
-%"Lorem Ipsum"% is %'simply dummy'% text of the printing and typesetting industry... Lorem Ipsum has been the industry's standard dummy text --- ever since the 1500s, when an unknown printer took a galley of type -- and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
-___
+Typographic quotes use the configured quote characters: %"double quoted"% and %'single quoted'% text.
 
-## subheading
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+Long dashes --- like this --- and short dashes -- like this -- are converted automatically.
+Ellipsis... are converted too.
 
-## another subheading
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
+## Lists
 
-***
+- First item
+- Second item
+- Third item
 
-It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
-
-![include](example2.md)
-
-# new chapter
-
-## subheading with another level
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
-
-```
-This is a Codeblock
-It should not contain **any** *FORMATTING*
-```
-
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
-
----
-
-It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
-
-### Sub-Subheading 1
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
-
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+## Block Types
 
 ``` cite
-This is a **citation** with multiple lines
-(Alexander the Great)
+The only way to do great work is to love what you do.
+(Steve Jobs)
 ```
 
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. There is also `inline code`. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
-
 ``` note
-This is a **note**
-with multiple lines
-
-and even a paragraph break
-to see if this works
+This is a **note** block.
+It can span multiple lines.
 ```
 
 ``` info
-This is a **info**-block a single line
+This is a single-line **info** block.
 ```
-
-### Sub-Subheading 2
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
 
 ``` warn
-This is a **warning**-block
-with two lines
+This is a **warning** block — pay attention to this.
 ```
 
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+# Included Content
+
+The following chapter is pulled in from a separate file using the include syntax:
+
+![include](example2.md)
+
+# Anchors and Internal Links
+
+Anchors mark a position in the text invisibly. Links can jump to any anchor within the
+same chapter or across chapter boundaries.
+
+## Defining Anchors
+
+Place an anchor anywhere in a line using `{#id}`:
+
+{#anchor-intro}
+This paragraph is marked with the anchor `anchor-intro`. A link elsewhere in this book
+can jump directly here.
+
+## Linking to Anchors
+
+Links to anchors use the familiar markdown link syntax with a `#` prefix.
+
+Jump to a section in the **same chapter**: [Back to anchor intro](#anchor-intro)
+
+Jump to a section in **another chapter**: [Go to the cross-chapter target](#cross-chapter-target)
+
+# Index Entries
+
+Spell can collect index entries from the running text and generate a clickable keyword
+index at the end of the book.
+
+## Basic Index Entry
+
+Use `%[term](IndexName)` to mark a term. The word appears normally in the text and is
+registered in the named index.
+
+The %[printing press](Technology) was invented by Johannes Gutenberg around 1440. It
+transformed the way knowledge was spread. The %[movable type](Technology) system he
+developed made book production vastly more efficient.
+
+## Canonical Term — Grouping Variants
+
+Use `%[display term](IndexName|canonical)` when the word in the text differs from the
+desired index entry, for example singular vs. plural forms, or inflected variants.
+
+The first %[steam engine](Technology|Steam engine) was a milestone of the industrial
+revolution. By the mid-1800s %[steam engines](Technology|Steam engine) were driving
+factories, ships and railways. The efficiency of these %[steam-powered machines](Technology|Steam engine)
+improved steadily throughout the century.
+
+All three variants appear under a single **Steam engine** entry in the index with
+numbered links to each occurrence.
+
+## Multiple Indexes
+
+Entries can belong to different indexes at the same time. Here the same sentence
+contributes to both a technology and a persons index:
+
+%[James Watt](Persons) significantly improved the %[steam engine](Technology|Steam engine)
+in the 1760s, making it practical for widespread industrial use.
+
+%[George Stephenson](Persons) applied %[steam power](Technology|Steam engine) to railways,
+building the first public steam railway in 1825.
+
+{#cross-chapter-target}
+This paragraph is the cross-chapter link target referenced from the previous chapter.
+[Back to where the link came from](#anchor-intro)
+
+%index[Technology](Technical Terms)
+
+%index[Persons](Notable Persons)
