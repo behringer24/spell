@@ -52,8 +52,9 @@ jobs:
 
       - name: Install WiX Toolset
         run: dotnet tool install --global wix
-        env:
-          WIX_ACCEPT_OSMF_EULA: true
+
+      - name: Accept WiX OSMF EULA (free for open source)
+        run: wix eula accept wix7
 
       - name: Build MSI installer
         shell: pwsh
@@ -62,8 +63,6 @@ jobs:
           wix build installer/spell.wxs `
             -d ProductVersion=$version `
             -o "spell-$version-windows-amd64.msi"
-        env:
-          WIX_ACCEPT_OSMF_EULA: true
 
       - name: Upload MSI to release
         uses: softprops/action-gh-release@v2
