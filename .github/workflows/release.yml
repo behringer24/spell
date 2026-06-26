@@ -47,8 +47,10 @@ jobs:
         id: get_version
         shell: pwsh
         run: |
-          $version = "${{ github.event.release.tag_name }}" -replace '^v', ''
+          $tag = "${{ github.event.release.tag_name }}" -replace '^v', ''
+          $version = $tag -replace '[^0-9.].*$', ''
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "TAG=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Install WiX Toolset
         run: dotnet tool install --global wix
@@ -60,13 +62,14 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.get_version.outputs.VERSION }}"
+          $tag = "${{ steps.get_version.outputs.TAG }}"
           wix build installer/spell.wxs `
             -d ProductVersion=$version `
-            -o "spell-$version-windows-amd64.msi"
+            -o "spell-$tag-windows-amd64.msi"
 
       - name: Upload MSI to release
         uses: softprops/action-gh-release@v2
         with:
-          files: "spell-*-windows-amd64.msi"
+          files: "spell-${{ steps.get_version.outputs.TAG }}-windows-amd64.msi"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
