@@ -254,7 +254,7 @@ func metaHandler() lineHandler {
 		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
 			matches := reMeta.FindStringSubmatch(line)
 			if len(matches) < 2 {
-				logMsg(LogDefault,"Error setting meta %s to %s", matches[1], matches[2])
+				logMsg(LogDefault, "Error setting meta %s to %s", matches[1], matches[2])
 				currentChapterContent.WriteString("<p>" + line + "</p>\n")
 				return "", true
 			}
@@ -265,23 +265,23 @@ func metaHandler() lineHandler {
 				ctx.book.AddAuthor(matches[2])
 			case "series":
 				if err := ctx.book.SetSeries(matches[2]); err != nil {
-					logMsg(LogDefault,"ERROR: Add series to %s: %v", matches[2], err)
+					logMsg(LogDefault, "ERROR: Add series to %s: %v", matches[2], err)
 				}
 			case "set":
 				if err := ctx.book.SetSet(matches[2]); err != nil {
-					logMsg(LogDefault,"ERROR: Add set to %s: %v", matches[2], err)
+					logMsg(LogDefault, "ERROR: Add set to %s: %v", matches[2], err)
 				}
 			case "entry":
 				if err := ctx.book.SetEntryNumber(matches[2]); err != nil {
-					logMsg(LogDefault,"ERROR: Add entry number to %s: %v", matches[2], err)
+					logMsg(LogDefault, "ERROR: Add entry number to %s: %v", matches[2], err)
 				}
 			case "uuid":
 				if err := ctx.book.SetUUID(matches[2]); err != nil {
-					logMsg(LogDefault,"ERROR: Set UUID to %s: %v", matches[2], err)
+					logMsg(LogDefault, "ERROR: Set UUID to %s: %v", matches[2], err)
 				}
 			case "language":
 				if err := ctx.book.AddLanguage(matches[2]); err != nil {
-					logMsg(LogDefault,"ERROR: Add language to %s: %v", matches[2], err)
+					logMsg(LogDefault, "ERROR: Add language to %s: %v", matches[2], err)
 				}
 			case "date":
 				ctx.book.AddDate(matches[2])
@@ -296,7 +296,7 @@ func metaHandler() lineHandler {
 			case "quotes":
 				quotes := strings.Split(matches[2], ",")
 				if len(quotes) != 4 {
-					logMsg(LogDefault,"ERROR: quotes definition has to have 4 values seperated by a colon %s %v", matches[2], quotes)
+					logMsg(LogDefault, "ERROR: quotes definition has to have 4 values seperated by a colon %s %v", matches[2], quotes)
 				} else {
 					laquo = quotes[0]
 					raquo = quotes[1]
@@ -315,7 +315,7 @@ func coverHandler() lineHandler {
 		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
 			matches := reCover.FindStringSubmatch(line)
 			if err := addCover(ctx.book, matches[1], ctx.baseDir, *generateCover); err != nil {
-				logMsg(LogDefault,"Error including image %s with URI %s: %v", matches[0], filepath.Join(ctx.baseDir, matches[1]), err)
+				logMsg(LogDefault, "Error including image %s with URI %s: %v", matches[0], filepath.Join(ctx.baseDir, matches[1]), err)
 			}
 			return "", true
 		},
@@ -329,14 +329,15 @@ func imageHandler() lineHandler {
 			transformed := reImage.ReplaceAllStringFunc(line, func(match string) string {
 				matches := reImage.FindStringSubmatch(match)
 				if len(matches) < 2 {
-					logMsg(LogDefault,"Error including %s with URI %s", matches[0], matches[2])
+					logMsg(LogDefault, "Error including %s with URI %s", matches[0], matches[2])
 					return match
 				}
+				firstparagraph = true
 				currentImageId++
 				currentImage := fmt.Sprintf("img/image_%05d%s", currentImageId, filepath.Ext(matches[2]))
 				imageID, err := ctx.book.AddImageFile(filepath.Join(ctx.baseDir, matches[2]), currentImage)
 				if err != nil {
-					logMsg(LogDefault,"Error including image %s with URI %s: %v", matches[0], filepath.Join(ctx.baseDir, matches[2]), err)
+					logMsg(LogDefault, "Error including image %s with URI %s: %v", matches[0], filepath.Join(ctx.baseDir, matches[2]), err)
 					return match
 				}
 				logMsg(LogVerbose, "Including image %s: %s", imageID, currentImage)
@@ -347,5 +348,11 @@ func imageHandler() lineHandler {
 	}
 }
 
-func dividerHandler() lineHandler   { return staticResult(reDivider, "<hr/>\n") }
-func pagebreakHandler() lineHandler { return staticResult(rePagebreak, "<MBP:PAGEBREAK/>\n") }
+func dividerHandler() lineHandler {
+	firstparagraph = true
+	return staticResult(reDivider, "<hr/>\n")
+}
+func pagebreakHandler() lineHandler {
+	firstparagraph = true
+	return staticResult(rePagebreak, "<MBP:PAGEBREAK/>\n")
+}
