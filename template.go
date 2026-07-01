@@ -31,7 +31,7 @@ p.firstparagraph {
 	text-indent: 2em;
 }
 p {
-	text-indent: 1em;
+	text-indent: 0em;
 }
 p, li {
 	margin-top: 0.3em;
