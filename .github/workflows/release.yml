@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # build and publish in parallel: linux/amd64
+        # build and publish in parallel: linux/amd64, linux/386, windows/amd64, windows/386
         goos: [windows, linux]
         goarch: [amd64, "386"]
     steps:
@@ -25,3 +25,51 @@ jobs:
           binary_name: "spell"
           ldflags: "-s -w"
           extra_files: LICENSE README.md
+
+  windows-installer:
+    name: Release Windows MSI Installer (amd64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.2"
+
+      - name: Build Windows amd64 binary
+        run: go build -ldflags="-s -w" -o spell.exe .
+        env:
+          GOOS: windows
+          GOARCH: amd64
+
+      - name: Get release version
+        id: get_version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.release.tag_name }}" -replace '^v', ''
+          $version = $tag -replace '[^0-9.].*$', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "TAG=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Install WiX Toolset
+        run: dotnet tool install --global wix
+
+      - name: Accept WiX OSMF EULA (free for open source)
+        run: wix eula accept wix7
+
+      - name: Build MSI installer
+        shell: pwsh
+        run: |
+          $version = "${{ steps.get_version.outputs.VERSION }}"
+          $tag = "${{ steps.get_version.outputs.TAG }}"
+          wix build installer/spell.wxs `
+            -d ProductVersion=$version `
+            -o "spell-$tag-windows-amd64.msi"
+
+      - name: Upload MSI to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "spell-${{ steps.get_version.outputs.TAG }}-windows-amd64.msi"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
