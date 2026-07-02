@@ -1,6 +1,5 @@
 package main
 
-import "github.com/behringer24/epub"
 
 const defaultCSS = `// Default CSS
 body {
@@ -136,7 +135,7 @@ ul.index-list li ul li a {
 }
 `
 
-func addDefaultTemplate(book *epub.EPub) {
+func addDefaultTemplate(book SpellBook) {
 	book.AddStylesheet("css/_spellDefault.css", defaultCSS)
 	logMsg(LogVerbose, "Added default stylesheet css/_spellDefault.css")
 }

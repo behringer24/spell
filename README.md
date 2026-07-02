@@ -3,13 +3,13 @@ Smart Processing and Enhanced Lightweight Layout - Markdown to epub converter
 
 ## Meaning:
 - Smart Processing: The project offers intelligent processing of Markdown files.
-- Processing: The conversion of Markdown to EPUB3 and the ability to use enhanced commands like includes.
-- Enhanced Layout: The generated EPUB files are well-structured and can be styled with templates.
+- Processing: The conversion of Markdown to EPUB2/3 and AZW3 and the ability to use enhanced commands like includes.
+- Enhanced Layout: The generated ebook files are well-structured and can be styled with templates.
 - Lightweight: The system's modularity and simplicity are key features.
-- Layout: The system ensures clean EPUB generation.
+- Layout: The system ensures clean ebook generation.
 
 ## Why SPELL?
-SPELL evokes "magic spells" and therefore aligns well with the "magical" way your system extends Markdown files with additional commands and converts them into EPUB.
+SPELL evokes "magic spells" and therefore aligns well with the "magical" way the system extends Markdown files with additional commands and converts them into EPUB or AZW3.
 
 It's a short and memorable name that suggests the program is both flexible and easy to use, while offering powerful features.
 
@@ -48,7 +48,7 @@ You will get a help overview over all command line parameters, like:
 spell
 Smart Processing and Enhanced Lightweight Layout. Command line parser for converting enhanced markdown to epub.
 
-Usage: spell [-h] [-v] [-c] [-V] [-e] [-s] infile [outfile]
+Usage: spell [-h] [-v] [-c] [-V] [-f] [-s] infile [outfile]
 
 Flags:
 -h, --help               Show this help text
@@ -58,11 +58,11 @@ Flags:
 
 Options:
 -s, --style              Comma-separated list of CSS files to include
--e, --epub               Generate epub version 2 or 3 (Default: 3)
+-f, --format             Output format: epub2, epub3, or azw3 (Default: epub3)
 
 Positional arguments:
 infile                   File to read from
-outfile                  File to write to (Default: ./ebook.epub)
+outfile                  File to write to (default: ./ebook.epub or ./ebook.azw3)
 ```
 The simplest way to call *spell* is to give it a Markdown file:
 ```
@@ -77,7 +77,7 @@ To check for the currently installed version:
 ```
 You will get a version number, like:
 ```
-SPELL version: v1.0.3
+SPELL version: v1.5.0
 ```
 
 ## Example
@@ -86,3 +86,9 @@ You find an example-folder in this repo. Download all files and compile them wit
 ../spell.exe example
 ```
 The example shows a lot of the built in features of *spell*.
+
+## Trademark notice
+"Kindle" and "AZW3" are trademarks of Amazon.com, Inc. or its affiliates.
+This project is an independent, community effort based on published,
+third-party documentation of the file format; it is not affiliated with,
+endorsed by, or sponsored by Amazon.

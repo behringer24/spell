@@ -6,23 +6,21 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/behringer24/argumentative"
-	"github.com/behringer24/epub"
 )
 
 const (
 	title       = "spell"
 	description = "Smart Processing and Enhanced Lightweight Layout. Command line parser for converting enhanced markdown to epub."
-	version     = "v1.4.0"
+	version     = "v1.5.0"
 )
 
 var (
 	inFileName    *string
 	outFileName   *string
-	generateVer   *string
+	outputFormat  *string
 	generateCover *bool
 	customCSS     *string
 	showHelp      *bool
@@ -76,7 +74,7 @@ func replaceAllIncludes(content string, baseDir string) string {
 }
 
 // Process Markdown file
-func processMarkdownFile(book *epub.EPub, filePath string, customCSSFile string) error {
+func processMarkdownFile(book SpellBook, filePath string, customCSSFile string) error {
 	// Read markdown file
 	content, err := readFile(filePath)
 	if err != nil {
@@ -102,11 +100,11 @@ func parseArgs() {
 	showHelp = flags.Flags().AddBool("help", "h", "Show this help text")
 	showVer = flags.Flags().AddBool("version", "v", "Show version information")
 	generateCover = flags.Flags().AddBool("cover", "c", "Generate cover page. This is normally not recommended")
-	generateVer = flags.Flags().AddString("epub", "e", false, "3", "Generate epub version 2 or 3")
+	outputFormat = flags.Flags().AddString("format", "f", false, "epub3", "Output format: epub2, epub3, or azw3")
 	customCSS = flags.Flags().AddString("style", "s", false, "", "Comma-separated list of CSS files to include")
 	verboseFlag = flags.Flags().AddBool("verbose", "V", "Enable verbose logging")
 	inFileName = flags.Flags().AddPositional("infile", true, "", "File to read from")
-	outFileName = flags.Flags().AddPositional("outfile", false, "./ebook.epub", "File to write to")
+	outFileName = flags.Flags().AddPositional("outfile", false, "", "File to write to (default: ./ebook.epub or ./ebook.azw3)")
 
 	err := flags.Parse(os.Args)
 	if *showHelp {
@@ -115,8 +113,8 @@ func parseArgs() {
 	} else if *showVer {
 		fmt.Print(strings.ToUpper(title), " version: ", version)
 		os.Exit(0)
-	} else if strings.Compare(*generateVer, "2") != 0 && strings.Compare(*generateVer, "3") != 0 {
-		fmt.Print("Error: epub version has to be 2 or 3")
+	} else if *outputFormat != "epub2" && *outputFormat != "epub3" && *outputFormat != "azw3" {
+		fmt.Print("Error: format must be epub2, epub3, or azw3")
 		os.Exit(1)
 	} else if err != nil {
 		flags.Usage(title, description, err)
@@ -128,8 +126,25 @@ func main() {
 	// Use argumentative as command line parser
 	parseArgs()
 
-	// Create new empty epub book
-	book := epub.New()
+	// Apply default output filename based on format when not specified
+	if *outFileName == "" {
+		if *outputFormat == "azw3" {
+			*outFileName = "./ebook.azw3"
+		} else {
+			*outFileName = "./ebook.epub"
+		}
+	}
+
+	// Create the book for the requested output format
+	var book SpellBook
+	switch *outputFormat {
+	case "epub2":
+		book = newEpubBook(2.0)
+	case "epub3":
+		book = newEpubBook(3.0)
+	case "azw3":
+		book = newAZW3Book()
+	}
 
 	// Process input file
 	err := processMarkdownFile(book, *inFileName, *customCSS)
@@ -137,13 +152,11 @@ func main() {
 		log.Fatalf("Error processing file '%s': %v", *inFileName, err)
 	}
 
-	// Save epub
-	epubVersion, _ := strconv.Atoi(*generateVer)
-	book.SetVersion(float64(epubVersion))
+	// Write output
 	err = book.Write(*outFileName)
 	if err != nil {
-		log.Fatalf("Error writing EPUB file '%s': %v", *outFileName, err)
+		log.Fatalf("Error writing file '%s': %v", *outFileName, err)
 	}
 
-	fmt.Printf("EPUB file '%s' created successfully!\n", *outFileName)
+	fmt.Printf("File '%s' created successfully!\n", *outFileName)
 }
