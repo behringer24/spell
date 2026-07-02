@@ -86,3 +86,9 @@ You find an example-folder in this repo. Download all files and compile them wit
 ../spell.exe example
 ```
 The example shows a lot of the built in features of *spell*.
+
+## Trademark notice
+"Kindle" and "AZW3" are trademarks of Amazon.com, Inc. or its affiliates.
+This project is an independent, community effort based on published,
+third-party documentation of the file format; it is not affiliated with,
+endorsed by, or sponsored by Amazon.
