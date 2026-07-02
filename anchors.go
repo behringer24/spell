@@ -119,13 +119,14 @@ func sanitizeID(s string) string {
 }
 
 // resolveAnchorHref returns the href value for a link to anchorID from currentChapterFile.
-func resolveAnchorHref(anchorID, currentChapterFile string) string {
+// In AZW3 mode all chapters form one concatenated document, so all links are plain #id.
+func resolveAnchorHref(ctx *parseContext, anchorID, currentChapterFile string) string {
 	entry, ok := anchors[anchorID]
 	if !ok {
 		logMsg(LogDefault, "WARNING: anchor %q not found", anchorID)
 		return "#" + anchorID
 	}
-	if entry.chapterFile == currentChapterFile {
+	if ctx.azw3Mode || entry.chapterFile == currentChapterFile {
 		return "#" + anchorID
 	}
 	return "../" + entry.chapterFile + "#" + anchorID

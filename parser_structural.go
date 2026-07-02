@@ -94,7 +94,7 @@ func anchorLinkHandler() lineHandler {
 		match: func(line string, _ bool) bool { return matchOutsideBackticks(line, reAnchorLink) },
 		handle: func(ctx *parseContext, line string, insideBlock bool) (string, bool) {
 			out := replaceOutsideBackticks(line, reAnchorLink, func(sub []string) string {
-				href := resolveAnchorHref(sub[2], ctx.currentChapterFile)
+				href := resolveAnchorHref(ctx, sub[2], ctx.currentChapterFile)
 				return fmt.Sprintf(`<a href="%s">%s</a>`, href, sub[1])
 			})
 			return parseLine(ctx, out, insideBlock), true
@@ -171,29 +171,38 @@ func indexOutputHandler() lineHandler {
 				}
 			}
 
+			// indexHref returns the correct href for an index entry link.
+			// In AZW3 mode all chapters form one document, so just use #id.
+			indexHref := func(e indexEntry) string {
+				if ctx.azw3Mode || e.chapterFile == filename {
+					return "#" + e.htmlID
+				}
+				return "../" + e.chapterFile + "#" + e.htmlID
+			}
+
 			var body strings.Builder
-			body.WriteString(fmt.Sprintf("<section epub:type=\"index\">\n<h1>%s</h1>\n<ul epub:type=\"index-entry-list\" class=\"index-list\">\n", title))
+			if ctx.azw3Mode {
+				body.WriteString(fmt.Sprintf("<section>\n<h1>%s</h1>\n<ul class=\"index-list\">\n", title))
+			} else {
+				body.WriteString(fmt.Sprintf("<section epub:type=\"index\">\n<h1>%s</h1>\n<ul epub:type=\"index-entry-list\" class=\"index-list\">\n", title))
+			}
 			for i, g := range groups {
 				if len(g.entries) == 1 {
 					e := g.entries[0]
-					var href string
-					if e.chapterFile == filename {
-						href = "#" + e.htmlID
+					if ctx.azw3Mode {
+						body.WriteString(fmt.Sprintf("  <li><span>%s</span> <a href=\"%s\">1</a></li>\n", g.canonical, indexHref(e)))
 					} else {
-						href = "../" + e.chapterFile + "#" + e.htmlID
+						body.WriteString(fmt.Sprintf("  <li epub:type=\"index-entry\"><span epub:type=\"index-term\">%s</span> <a epub:type=\"index-locator\" href=\"%s\">1</a></li>\n", g.canonical, indexHref(e)))
 					}
-					body.WriteString(fmt.Sprintf("  <li epub:type=\"index-entry\"><span epub:type=\"index-term\">%s</span> <a epub:type=\"index-locator\" href=\"%s\">1</a></li>\n", g.canonical, href))
 				} else {
 					// Multiple occurrences: list canonical term once, link each occurrence.
-					body.WriteString(fmt.Sprintf("  <li epub:type=\"index-entry\"><span epub:type=\"index-term\" class=\"index-canonical\">%s</span>\n    <ul epub:type=\"index-locator-list\">\n", g.canonical))
+					if ctx.azw3Mode {
+						body.WriteString(fmt.Sprintf("  <li><span class=\"index-canonical\">%s</span>\n    <ul>\n", g.canonical))
+					} else {
+						body.WriteString(fmt.Sprintf("  <li epub:type=\"index-entry\"><span epub:type=\"index-term\" class=\"index-canonical\">%s</span>\n    <ul epub:type=\"index-locator-list\">\n", g.canonical))
+					}
 					for j, e := range g.entries {
-						var href string
-						if e.chapterFile == filename {
-							href = "#" + e.htmlID
-						} else {
-							href = "../" + e.chapterFile + "#" + e.htmlID
-						}
-						body.WriteString(fmt.Sprintf("      <li epub:type=\"index-locator\"><a href=\"%s\">%d</a></li>\n", href, j+1))
+						body.WriteString(fmt.Sprintf("      <li><a href=\"%s\">%d</a></li>\n", indexHref(e), j+1))
 					}
 					body.WriteString("    </ul>\n  </li>\n")
 				}
@@ -201,23 +210,28 @@ func indexOutputHandler() lineHandler {
 			}
 			body.WriteString("</ul>\n</section>\n")
 
-			customCSSLinks := ""
-			for _, p := range ctx.customCSSPaths {
-				customCSSLinks += "\n\t\t<link rel=\"stylesheet\" href=\"../" + p + "\"/>"
-			}
-			htmlContent := `<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE xhtml>
+			var htmlContent string
+			if ctx.azw3Mode {
+				// AZW3: plain fragment only, no document wrapper.
+				htmlContent = body.String()
+			} else {
+				var customCSSLinks string
+				for _, p := range ctx.customCSSPaths {
+					customCSSLinks += "\n\t\t<link rel=\"stylesheet\" href=\"../" + p + "\"/>"
+				}
+				htmlContent = `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-        <title>` + title + `</title>
-		<link rel="stylesheet" href="../css/_spellDefault.css"/>` + customCSSLinks + `
+        <title>` + title + `</title>` + customCSSLinks + `
     </head>
     <body>
 	` + body.String() + `
 	</body>
 </html>`
-			if _, err := ctx.book.AddXHTML(filename, htmlContent, 10); err != nil {
+			}
+			if _, err := ctx.book.AddXHTML(filename, title, htmlContent, 10); err != nil {
 				logMsg(LogDefault, "ERROR: writing index chapter %s: %v", filename, err)
 			}
 			currentNavpoint[1] = ctx.book.AddNavpoint(title, filename, 10)
@@ -341,7 +355,11 @@ func imageHandler() lineHandler {
 					return match
 				}
 				logMsg(LogVerbose, "Including image %s: %s", imageID, currentImage)
-				return fmt.Sprintf(`<img title="%s" alt="%s" src="../%s"/>`, matches[4], matches[1], currentImage)
+				imgSrc := "../" + currentImage
+				if strings.Contains(imageID, "kindle:") {
+					imgSrc = imageID
+				}
+				return fmt.Sprintf(`<img title="%s" alt="%s" src="%s"/>`, matches[4], matches[1], imgSrc)
 			})
 			return "<div>" + parseLine(ctx, transformed, true) + "</div>\n", true
 		},

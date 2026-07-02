@@ -1,6 +1,12 @@
 github.com/behringer24/argumentative v1.0.2 h1:bnIsGlHlBbhsxdiGYZnHNOFWFaImn1wDuorWzuBQblM=
 github.com/behringer24/argumentative v1.0.2/go.mod h1:mKmcVSVU+m/XKIyXy6GClMh2atssqmKPm1LI/mJ8wyk=
-github.com/behringer24/epub v0.0.0-20260621141158-9ac4456953bd h1:dV9XhhubAvfCY0efGPcup9qxi9R6/2hgQ0765t874sI=
-github.com/behringer24/epub v0.0.0-20260621141158-9ac4456953bd/go.mod h1:7i/vJuO47lbIT2zbzdnQbnZiP2bPen24WwcFkAo1PrE=
+github.com/behringer24/azw3 v0.1.0 h1:6iB3P76afswpupTwx3Vp2zl5gorpq+GRCveviRnfHpE=
+github.com/behringer24/azw3 v0.1.0/go.mod h1:YNlDwukPN3knCzUBX2MQNX3MiI7DxduA1FPKzVpsAd4=
+github.com/behringer24/epub v0.0.0-20260702081604-a11c0adf7349 h1:XXoWruVz/7Vxk46bfGY5hmO0AIYAjbkM/uH4vdXSwV4=
+github.com/behringer24/epub v0.0.0-20260702081604-a11c0adf7349/go.mod h1:vvgjMx7Sm/ZJmdv4nrn+kByKpExmr0U5ztgoAWl0MxI=
+github.com/behringer24/mobi v0.5.0 h1:JkjIv5gdSAU5DfAOz5HTr97Rq+BiUrQJhojVxNaYNOU=
+github.com/behringer24/mobi v0.5.0/go.mod h1:0Bmhx7vwgsKJZkj3IxbqKaSGuHxCKrQfPzlVFlIrKkM=
 github.com/gofrs/uuid v4.4.0+incompatible h1:3qXRTX8/NbyulANqlc0lchS1gqAVxRgsuW1YrTJupqA=
 github.com/gofrs/uuid v4.4.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
+golang.org/x/text v0.21.0 h1:zyQAAkrwaneQ066sspRyJaG9VNi/YJ1NfzcGB3hZ/qo=
+golang.org/x/text v0.21.0/go.mod h1:4IBbMaMmOPCJ8SecivzSH54+73PCFmPWxNTLm+vZkEQ=

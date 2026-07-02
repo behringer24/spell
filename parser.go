@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"github.com/behringer24/epub"
 )
 
 const (
@@ -23,7 +21,7 @@ var (
 	currentChapterContent strings.Builder
 	currentChapterTitle   string
 	currentChapterNumber  [7]int
-	currentNavpoint       [7]*epub.Navpoint
+	currentNavpoint       [7]NavpointAdder
 	currentImageId        int
 
 	firstparagraph bool = true
@@ -57,12 +55,13 @@ var (
 	reNewline    = regexp.MustCompile(`\r?\n`)
 )
 
-// parseContext carries the epub book and base directory through the handler pipeline.
+// parseContext carries the book and base directory through the handler pipeline.
 type parseContext struct {
-	book              *epub.EPub
-	baseDir           string
-	customCSSPaths    []string // epub-internal paths (e.g. ["css/a.css", "css/b.css"])
-	currentChapterFile string  // filename of the chapter currently being rendered
+	book               SpellBook
+	baseDir            string
+	customCSSPaths     []string // book-internal paths (e.g. ["css/a.css", "css/b.css"])
+	currentChapterFile string   // filename of the chapter currently being rendered
+	azw3Mode           bool     // true when producing AZW3: all chapters form one document, so cross-chapter hrefs are plain #id
 }
 
 // lineHandler matches and transforms one line.
@@ -185,24 +184,31 @@ func init() {
 
 // Add a chapter file to the book
 func addChapter(ctx *parseContext, chapterTitle string, chapterNumber int, chapterContent strings.Builder) error {
-	customCSSLinks := ""
-	for _, p := range ctx.customCSSPaths {
-		customCSSLinks += "\n\t\t<link rel=\"stylesheet\" href=\"../" + p + "\"/>"
-	}
-	htmlContent := `<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE xhtml>
+	filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", chapterNumber)
+
+	var content string
+	if ctx.azw3Mode {
+		// AZW3: mobi chunks must be plain HTML fragments, not full documents.
+		// CSS is applied globally via AddStylesheet; no wrapper needed.
+		content = chapterContent.String()
+	} else {
+		var customCSSLinks string
+		for _, p := range ctx.customCSSPaths {
+			customCSSLinks += "\n\t\t<link rel=\"stylesheet\" href=\"../" + p + "\"/>"
+		}
+		content = `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-        <title>` + chapterTitle + `</title>
-		<link rel="stylesheet" href="../css/_spellDefault.css"/>` + customCSSLinks + `
+        <title>` + chapterTitle + `</title>` + customCSSLinks + `
     </head>
     <body>
 	` + chapterContent.String() + `
 	</body>
 </html>`
-	filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", chapterNumber)
-	_, err := ctx.book.AddXHTML(filename, htmlContent, 10)
+	}
+	_, err := ctx.book.AddXHTML(filename, chapterTitle, content, 10)
 	if err != nil {
 		return err
 	}
@@ -210,18 +216,26 @@ func addChapter(ctx *parseContext, chapterTitle string, chapterNumber int, chapt
 	return nil
 }
 
-func addCover(book *epub.EPub, imageFile string, baseDir string, addCoverPage bool) error {
+func addCover(book SpellBook, imageFile string, baseDir string, addCoverPage bool) error {
 	currentImage := fmt.Sprintf("img/cover%s", filepath.Ext(imageFile))
 	imageID, err := book.AddImageFile(filepath.Join(baseDir, imageFile), currentImage)
 	if err != nil {
 		return err
-	} else {
-		book.SetCoverImage(imageID)
-		logMsg(LogVerbose, "Added cover image %s: %s", imageID, currentImage)
 	}
+	book.SetCoverImage(imageID)
+	logMsg(LogVerbose, "Added cover image %s: %s", imageID, currentImage)
 
 	if addCoverPage {
-		htmlContent := `<?xml version="1.0" encoding="utf-8"?>
+		isAZW3 := strings.Contains(imageID, "kindle:")
+		imgSrc := "../" + currentImage
+		if isAZW3 {
+			imgSrc = imageID
+		}
+		var htmlContent string
+		if isAZW3 {
+			htmlContent = `<div style="text-align:center;padding:0;margin:0;"><img src="` + imgSrc + `" style="max-width:100%;"/></div>`
+		} else {
+			htmlContent = `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE xhtml>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
     <head>
@@ -235,12 +249,13 @@ func addCover(book *epub.EPub, imageFile string, baseDir string, addCoverPage bo
     <body>
 		<div>
             <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="100%" height="100%" viewBox="0 0 1240 1752" preserveAspectRatio="none">
-                <image width="1240" height="1752" xlink:href="../` + currentImage + `"/>
+                <image width="1240" height="1752" xlink:href="` + imgSrc + `"/>
             </svg>
         </div>
 	</body>
 </html>`
-		_, err = book.AddXHTML("xhtml/cover.xhtml", htmlContent, 1)
+		}
+		_, err = book.AddXHTML("xhtml/cover.xhtml", "Cover", htmlContent, 1)
 		if err != nil {
 			return err
 		}
@@ -278,7 +293,7 @@ func isBlockElement(s string) bool {
 }
 
 // Parse chapters and other Markdown commands
-func parseMarkdown(book *epub.EPub, content string, baseDir string, customCSSFile string) error {
+func parseMarkdown(book SpellBook, content string, baseDir string, customCSSFile string) error {
 	// Pass 1: collect all anchors and index entries before rendering.
 	resetAnchors()
 	scanAnchorsAndIndex(content)
@@ -288,7 +303,11 @@ func parseMarkdown(book *epub.EPub, content string, baseDir string, customCSSFil
 
 	addDefaultTemplate(book)
 
-	ctx := &parseContext{book: book, baseDir: baseDir}
+	_, isAZW3 := book.(*azw3Book)
+	ctx := &parseContext{book: book, baseDir: baseDir, azw3Mode: isAZW3}
+	if !isAZW3 {
+		ctx.customCSSPaths = append(ctx.customCSSPaths, "css/_spellDefault.css")
+	}
 	for _, cssFile := range strings.FieldsFunc(customCSSFile, func(r rune) bool { return r == ',' }) {
 		cssFile = strings.TrimSpace(cssFile)
 		cssContent, err := os.ReadFile(cssFile)
