@@ -1,7 +1,7 @@
 github.com/behringer24/argumentative v1.0.2 h1:bnIsGlHlBbhsxdiGYZnHNOFWFaImn1wDuorWzuBQblM=
 github.com/behringer24/argumentative v1.0.2/go.mod h1:mKmcVSVU+m/XKIyXy6GClMh2atssqmKPm1LI/mJ8wyk=
-github.com/behringer24/azw3 v0.2.0 h1:nLC5bMcjjeC5WSXPFX3EYDpc/HAdO+vv+rqNm+BdADU=
-github.com/behringer24/azw3 v0.2.0/go.mod h1:V4U8oFaIdUvkKGi1CQ0OSDBJ34OO6vecalQSs2cLqcI=
+github.com/behringer24/azw3 v0.3.0 h1:40Yy2jZZnjm1TEBUOe1NQfzzI+9fRwayeYbYANWkIfY=
+github.com/behringer24/azw3 v0.3.0/go.mod h1:V4U8oFaIdUvkKGi1CQ0OSDBJ34OO6vecalQSs2cLqcI=
 github.com/behringer24/epub v0.0.0-20260702081604-a11c0adf7349 h1:XXoWruVz/7Vxk46bfGY5hmO0AIYAjbkM/uH4vdXSwV4=
 github.com/behringer24/epub v0.0.0-20260702081604-a11c0adf7349/go.mod h1:vvgjMx7Sm/ZJmdv4nrn+kByKpExmr0U5ztgoAWl0MxI=
 github.com/behringer24/mobi v0.6.0 h1:ww/U92u4Oj4AVMnJVfiwU5guUy/pgFQpxb8jzAWG8CU=
