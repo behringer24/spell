@@ -165,6 +165,7 @@ func init() {
 		coverHandler(),
 		imageHandler(),
 		indexOutputHandler(),
+		tocOutputHandler(),
 		anchorDefHandler(),
 		anchorLinkHandler(),
 		indexEntryHandler(),

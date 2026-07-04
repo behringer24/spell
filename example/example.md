@@ -12,6 +12,8 @@ $[entry](1)
 $[quotes](&raquo;,&laquo;,&rsaquo;,&lsaquo;)
 ![cover](cover.jpg "Cover image")
 
+%toc(Table of Contents)
+
 # Introduction
 
 This book demonstrates the features of the **spell** markdown-to-epub converter.

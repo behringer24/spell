@@ -68,7 +68,7 @@ func chapterHandler() lineHandler {
 			ctx.currentChapterFile = filename
 			currentNavpoint[1] = ctx.book.AddNavpoint(currentChapterTitle, filename, 10)
 			firstparagraph = true
-			return "<h1>" + parseLine(ctx, matches[2], true) + "</h1>\n", true
+			return fmt.Sprintf("<h1 id=\"label1_%d\">%s</h1>\n", currentChapterNumber[1], parseLine(ctx, matches[2], true)), true
 		},
 	}
 }
@@ -182,9 +182,9 @@ func indexOutputHandler() lineHandler {
 
 			var body strings.Builder
 			if ctx.azw3Mode {
-				body.WriteString(fmt.Sprintf("<section>\n<h1>%s</h1>\n<ul class=\"index-list\">\n", title))
+				body.WriteString(fmt.Sprintf("<section>\n<h1 id=\"label1_%d\">%s</h1>\n<ul class=\"index-list\">\n", currentChapterNumber[1], title))
 			} else {
-				body.WriteString(fmt.Sprintf("<section epub:type=\"index\">\n<h1>%s</h1>\n<ul epub:type=\"index-entry-list\" class=\"index-list\">\n", title))
+				body.WriteString(fmt.Sprintf("<section epub:type=\"index\">\n<h1 id=\"label1_%d\">%s</h1>\n<ul epub:type=\"index-entry-list\" class=\"index-list\">\n", currentChapterNumber[1], title))
 			}
 			for i, g := range groups {
 				if len(g.entries) == 1 {
@@ -236,6 +236,116 @@ func indexOutputHandler() lineHandler {
 			}
 			currentNavpoint[1] = ctx.book.AddNavpoint(title, filename, 10)
 			logMsg(LogDefault, "Add index %q (%s) as %s", indexName, title, filename)
+			return "", true
+		},
+	}
+}
+
+// tocOutputHandler renders %toc or %toc(Title) as a generated table of
+// contents chapter at the position of the command. The optional title makes
+// localization easy, e.g. %toc(Inhaltsverzeichnis). The TOC lists every
+// chapter and subchapter of the whole book (collected in Pass 1), nested by
+// heading level, and works identically for EPUB and AZW3.
+func tocOutputHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return reTocOutput.MatchString(line) },
+		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
+			sub := reTocOutput.FindStringSubmatch(line)
+			title := sub[1]
+			if title == "" {
+				title = "Table of Contents"
+			}
+			if len(tocEntries) == 0 {
+				logMsg(LogDefault, "WARNING: %%toc found but the book has no chapters")
+				return "", true
+			}
+
+			// Flush current chapter before starting the TOC chapter.
+			if currentChapterTitle != "" {
+				addChapter(ctx, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
+				currentChapterTitle = ""
+				currentChapterContent.Reset()
+			}
+
+			currentChapterNumber[1]++
+			filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", currentChapterNumber[1])
+			ctx.currentChapterFile = filename
+
+			// tocHref returns the link target for a heading. In AZW3 mode all
+			// chapters form one document, so links are plain #label anchors
+			// (resolved to exact positions by the KF8 writer). In EPUB mode
+			// chapters link to their file, subchapters to file#label.
+			tocHref := func(e tocEntry) string {
+				if ctx.azw3Mode {
+					return "#" + e.label
+				}
+				if e.level == 1 {
+					return "../" + e.chapterFile
+				}
+				return "../" + e.chapterFile + "#" + e.label
+			}
+
+			var body strings.Builder
+			body.WriteString(fmt.Sprintf("<section>\n<h1 id=\"label1_%d\">%s</h1>\n", currentChapterNumber[1], title))
+			body.WriteString("<ol class=\"toc-list\">\n")
+			level := 1
+			openLi := false
+			for _, e := range tocEntries {
+				if e.level > level {
+					// Nest deeper inside the currently open list item.
+					for level < e.level {
+						body.WriteString("\n<ol>\n")
+						level++
+					}
+					openLi = false
+				} else {
+					if openLi {
+						body.WriteString("</li>\n")
+					}
+					for level > e.level {
+						body.WriteString("</ol>\n</li>\n")
+						level--
+					}
+				}
+				body.WriteString(fmt.Sprintf("<li><a href=\"%s\">%s</a>", tocHref(e), parseLine(ctx, e.title, true)))
+				openLi = true
+			}
+			if openLi {
+				body.WriteString("</li>\n")
+			}
+			for level > 1 {
+				body.WriteString("</ol>\n</li>\n")
+				level--
+			}
+			body.WriteString("</ol>\n</section>\n")
+
+			var htmlContent string
+			if ctx.azw3Mode {
+				// AZW3: plain fragment only, no document wrapper.
+				htmlContent = body.String()
+			} else {
+				var customCSSLinks string
+				for _, p := range ctx.customCSSPaths {
+					customCSSLinks += "\n\t\t<link rel=\"stylesheet\" href=\"../" + p + "\"/>"
+				}
+				htmlContent = `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <title>` + title + `</title>` + customCSSLinks + `
+    </head>
+    <body>
+	` + body.String() + `
+	</body>
+</html>`
+			}
+			if _, err := ctx.book.AddXHTML(filename, title, htmlContent, 10); err != nil {
+				logMsg(LogDefault, "ERROR: writing TOC chapter %s: %v", filename, err)
+			}
+			currentNavpoint[1] = ctx.book.AddNavpoint(title, filename, 10)
+			firstparagraph = true
+			logMsg(LogDefault, "Add table of contents %q as %s", title, filename)
 			return "", true
 		},
 	}
