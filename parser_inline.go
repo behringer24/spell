@@ -55,8 +55,12 @@ func italicHandler() lineHandler {
 
 func codeSpanHandler() lineHandler {
 	return replaceEachAndRecurse(reCode, func(_ *parseContext, inner string) string {
-		// Encode spell-specific trigger characters so that anchor/index handlers
-		// cannot match content that was written as inline code.
+		// Encode spell-specific trigger characters so that downstream handlers
+		// cannot match content that was written as inline code. The backslash
+		// is encoded first (it is a backslash-escape trigger, and encoding it
+		// keeps escapes literal inside code); its replacement introduces no
+		// further trigger characters.
+		inner = strings.ReplaceAll(inner, "\\", "&#92;")
 		inner = strings.ReplaceAll(inner, "%", "&#37;")
 		inner = strings.ReplaceAll(inner, "{", "&#123;")
 		inner = strings.ReplaceAll(inner, "}", "&#125;")

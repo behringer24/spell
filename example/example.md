@@ -39,6 +39,9 @@ Typographic quotes use the configured quote characters: %"double quoted"% and %'
 Long dashes --- like this --- and short dashes -- like this -- are converted automatically.
 Ellipsis... are converted too.
 
+A backslash escapes any special character so it is shown literally: \*not italic\*,
+\# not a heading, and a literal backslash before a letter like C:\path stays as is.
+
 ## Lists
 
 Unordered lists use `-`, `*` or `+` and nest by indentation:

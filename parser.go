@@ -161,6 +161,7 @@ var handlers []lineHandler
 
 func init() {
 	handlers = []lineHandler{
+		escapeHandler(),
 		listCloseHandler(),
 		blockquoteFenceHandler(),
 		blockquoteContentHandler(),
