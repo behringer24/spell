@@ -25,7 +25,7 @@ var (
 	currentImageId        int
 
 	firstparagraph bool = true
-	inUlList       bool
+	listStack      []listFrame
 	inBlockType    int = 0
 
 	laquo  = "\""
@@ -47,7 +47,12 @@ var (
 	reItalic     = regexp.MustCompile(`\*([^\*]+)\*`)
 	reCode       = regexp.MustCompile("`([^`]+)`")
 	reComment    = regexp.MustCompile(`(^|\s)//.*$`)
-	reUlList     = regexp.MustCompile(`^\s*-\s*(.*)$`)
+	// reListItem matches a bullet (-, *, +) or ordered (1. / 1)) list item.
+	// Group 1: leading indentation, group 2: bullet marker (empty if ordered),
+	// group 3: ordinal digits (empty if unordered), group 4: item content.
+	reListItem = regexp.MustCompile(`^([ \t]*)(?:([-*+])|(\d{1,9})[.)])[ \t]+(.*)$`)
+	// reLink matches an inline link [text](url) or [text](url "title").
+	reLink       = regexp.MustCompile(`\[([^\]]+)\]\(([^ \)]+)\s*(?:"([^"]*)")?\)`)
 	reLongDash   = regexp.MustCompile(`\s+(---)\s+`)
 	reMidDash    = regexp.MustCompile(`\s+(--)\s+`)
 	reThreeDots  = regexp.MustCompile(`(\.\.\.)`)
@@ -169,6 +174,7 @@ func init() {
 		anchorDefHandler(),
 		anchorLinkHandler(),
 		indexEntryHandler(),
+		linkHandler(),
 		dividerHandler(),
 		pagebreakHandler(),
 		quotesHandler(),
@@ -284,7 +290,8 @@ func isBlockElement(s string) bool {
 	for _, prefix := range []string{
 		"<h1", "<h2", "<h3", "<h4", "<h5", "<h6",
 		"<blockquote", "<hr", "<MBP:", "<div",
-		"<ul", "</ul>", "<li", "<section",
+		"<ul", "</ul>", "<ol", "</ol>", "<li", "</li",
+		"<section",
 	} {
 		if strings.HasPrefix(s, prefix) {
 			return true
@@ -297,6 +304,7 @@ func isBlockElement(s string) bool {
 func parseMarkdown(book SpellBook, content string, baseDir string, customCSSFile string) error {
 	// Pass 1: collect all anchors and index entries before rendering.
 	resetAnchors()
+	listStack = nil
 	scanAnchorsAndIndex(content)
 
 	// split contents by lines
@@ -359,6 +367,8 @@ func parseMarkdown(book SpellBook, content string, baseDir string, customCSSFile
 		}
 	}
 	flushParagraph()
+	// Close any list still open at end of input.
+	currentChapterContent.WriteString(closeAllLists())
 
 	// Add last chapter
 	if currentChapterTitle != "" {

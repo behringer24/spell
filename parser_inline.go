@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 func quotesHandler() lineHandler {
 	return replaceEachAndRecurse(reQuotes, func(_ *parseContext, marker string) string {
@@ -17,6 +20,25 @@ func quotesHandler() lineHandler {
 			return marker
 		}
 	})
+}
+
+// linkHandler renders inline links [text](url) and [text](url "title") as
+// external hyperlinks. Internal fragment links [text](#id) are handled
+// earlier by anchorLinkHandler; images ![alt](url) by imageHandler. Matches
+// inside backtick code spans are left untouched.
+func linkHandler() lineHandler {
+	return lineHandler{
+		match: func(line string, _ bool) bool { return matchOutsideBackticks(line, reLink) },
+		handle: func(ctx *parseContext, line string, insideBlock bool) (string, bool) {
+			out := replaceOutsideBackticks(line, reLink, func(sub []string) string {
+				if sub[3] != "" {
+					return fmt.Sprintf(`<a href="%s" title="%s">%s</a>`, sub[2], sub[3], sub[1])
+				}
+				return fmt.Sprintf(`<a href="%s">%s</a>`, sub[2], sub[1])
+			})
+			return parseLine(ctx, out, insideBlock), true
+		},
+	}
 }
 
 func boldHandler() lineHandler {
