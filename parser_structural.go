@@ -58,6 +58,7 @@ func chapterHandler() lineHandler {
 		match: func(line string, insideBlock bool) bool { return reChapter.MatchString(line) },
 		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
 			if currentChapterTitle != "" {
+				appendPendingFootnotes(ctx)
 				addChapter(ctx, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
 			}
 			matches := reChapter.FindStringSubmatch(line)
@@ -66,6 +67,11 @@ func chapterHandler() lineHandler {
 			currentChapterNumber[1]++
 			filename := fmt.Sprintf("xhtml/chapter_%05d.xhtml", currentChapterNumber[1])
 			ctx.currentChapterFile = filename
+			// The first real chapter marks where body content begins.
+			if !startReadingSet {
+				ctx.book.SetStartReading(filename)
+				startReadingSet = true
+			}
 			currentNavpoint[1] = ctx.book.AddNavpoint(currentChapterTitle, filename, 10)
 			firstparagraph = true
 			return fmt.Sprintf("<h1 id=\"label1_%d\">%s</h1>\n", currentChapterNumber[1], parseLine(ctx, matches[2], true)), true
@@ -146,6 +152,7 @@ func indexOutputHandler() lineHandler {
 
 			// Flush current chapter before starting the index chapter.
 			if currentChapterTitle != "" {
+				appendPendingFootnotes(ctx)
 				addChapter(ctx, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
 				currentChapterTitle = ""
 				currentChapterContent.Reset()
@@ -262,6 +269,7 @@ func tocOutputHandler() lineHandler {
 
 			// Flush current chapter before starting the TOC chapter.
 			if currentChapterTitle != "" {
+				appendPendingFootnotes(ctx)
 				addChapter(ctx, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
 				currentChapterTitle = ""
 				currentChapterContent.Reset()

@@ -27,7 +27,14 @@ func (b *azw3Book) SetTitle(title string)        { b.book.SetTitle(title) }
 func (b *azw3Book) AddAuthor(author string)       { b.book.AddAuthor(author) }
 func (b *azw3Book) AddLanguage(lang string) error { return b.book.AddLanguage(lang) }
 
-// The following metadata fields have no KF8 equivalent and are silently ignored.
+// Series/collection metadata is intentionally dropped for AZW3. Unlike EPUB3
+// (belongs-to-collection), KF8/MOBI has no native series record: verified
+// against calibre (writes no series EXTH), KindleUnpack (no series entry in
+// the EXTH 500-544 table) and libmobi (no series tag). Amazon groups series
+// only via its catalog by ASIN, for purchased titles. The only device-visible
+// alternative is folding the series into the title, which was deliberately
+// declined so the displayed title stays clean. Do not "fix" these into title
+// mangling without revisiting that decision.
 func (b *azw3Book) SetSeries(_ string) error      { return nil }
 func (b *azw3Book) SetSet(_ string) error         { return nil }
 func (b *azw3Book) SetEntryNumber(_ string) error { return nil }
@@ -77,6 +84,8 @@ func (b *azw3Book) AddStylesheet(path, content string) { b.book.AddStylesheet(pa
 func (b *azw3Book) AddNavpoint(label, target string, order int) NavpointAdder {
 	return &azw3Navpoint{np: b.book.AddNavpoint(label, stripFragment(target), order)}
 }
+
+func (b *azw3Book) SetStartReading(filename string) { b.book.SetStartReading(azw3.Id(filename)) }
 
 func (b *azw3Book) Write(filename string) error { return b.book.Write(filename) }
 
