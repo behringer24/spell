@@ -39,11 +39,33 @@ Typographic quotes use the configured quote characters: %"double quoted"% and %'
 Long dashes --- like this --- and short dashes -- like this -- are converted automatically.
 Ellipsis... are converted too.
 
+A backslash escapes any special character so it is shown literally: \*not italic\*,
+\# not a heading, and a literal backslash before a letter like C:\path stays as is.
+
 ## Lists
+
+Unordered lists use `-`, `*` or `+` and nest by indentation:
 
 - First item
 - Second item
+  - Nested item
+  - Another nested item
+    - Even deeper
 - Third item
+
+Ordered lists use `1.` or `1)` and can be nested and mixed with bullets:
+
+1. Step one
+2. Step two
+   1. Sub-step
+   2. Another sub-step
+3. Step three
+
+## Links
+
+Link to an external resource with the familiar markdown syntax:
+[the spell repository](https://github.com/behringer24/spell) or with a tooltip
+[the wiki](https://github.com/behringer24/spell/wiki "Documentation").
 
 ## Block Types
 
