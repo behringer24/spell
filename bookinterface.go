@@ -26,5 +26,8 @@ type SpellBook interface {
 	SetCoverImage(id string)
 	AddStylesheet(path, content string)
 	AddNavpoint(label, filename string, order int) NavpointAdder
+	// SetStartReading marks the file where body content begins (bodymatter
+	// landmark / KF8 start-reading). Safe to call once for the first chapter.
+	SetStartReading(filename string)
 	Write(filename string) error
 }

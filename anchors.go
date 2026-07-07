@@ -41,7 +41,24 @@ var (
 
 	// tocEntries lists all headings in document order (populated by scanAnchorsAndIndex)
 	tocEntries []tocEntry
+
+	// footnoteDefs maps a footnote id to its (raw markdown) definition text,
+	// collected in Pass 1 so a reference may appear before its definition.
+	footnoteDefs = map[string]string{}
+
+	// Per-chapter footnote state, reset whenever a chapter is finalized.
+	footnoteNum      int            // last number assigned in the current chapter
+	footnoteAssigned = map[string]int{}
+	pendingFootnotes []pendingNote
 )
+
+// pendingNote is a footnote referenced in the current chapter and awaiting
+// emission as an <aside> when the chapter is finalized.
+type pendingNote struct {
+	chap int    // chapter number (for globally unique ids)
+	num  int    // display number within the chapter
+	id   string // author-supplied footnote id
+}
 
 var (
 	reAnchorDef   = regexp.MustCompile(`\{#([a-zA-Z0-9_-]+)\}`)
@@ -52,6 +69,10 @@ var (
 	reIndexOutput = regexp.MustCompile(`^%index\[([^\]]+)\](?:\(([^)]+)\))?$`)
 	// %toc or %toc(Title)
 	reTocOutput = regexp.MustCompile(`^%toc(?:\(([^)]+)\))?$`)
+	// [^id]: definition text  (a footnote definition line)
+	reFootnoteDef = regexp.MustCompile(`^\s*\[\^([a-zA-Z0-9_-]+)\]:\s*(.*)$`)
+	// [^id]  (an inline footnote reference)
+	reFootnoteRef = regexp.MustCompile(`\[\^([a-zA-Z0-9_-]+)\]`)
 )
 
 // resetAnchors clears all anchor/index state so processMarkdownFile is idempotent.
@@ -60,6 +81,10 @@ func resetAnchors() {
 	indexes = map[string][]indexEntry{}
 	indexCounters = map[string]int{}
 	tocEntries = nil
+	footnoteDefs = map[string]string{}
+	footnoteNum = 0
+	footnoteAssigned = map[string]int{}
+	pendingFootnotes = nil
 }
 
 // chapterFileForNumber returns the deterministic XHTML filename for a chapter number.
@@ -130,6 +155,18 @@ func scanAnchorsAndIndex(content string) {
 		}
 
 		currentFile := chapterFileForNumber(levelNum[1])
+
+		// Collect [^id]: footnote definitions (so a reference may precede its
+		// definition). A definition line yields no inline output in Pass 2.
+		if m := reFootnoteDef.FindStringSubmatch(line); m != nil {
+			if _, exists := footnoteDefs[m[1]]; exists {
+				logMsg(LogDefault, "WARNING: duplicate footnote id %q (second definition ignored)", m[1])
+			} else {
+				footnoteDefs[m[1]] = m[2]
+				logMsg(LogVerbose, "Footnote %q registered", m[1])
+			}
+			continue
+		}
 
 		// Collect {#id} anchor definitions.
 		for _, m := range reAnchorDef.FindAllStringSubmatch(line, -1) {

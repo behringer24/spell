@@ -30,6 +30,12 @@ Or with a custom stylesheet:
 
 For more details see: https://github.com/behringer24/spell
 
+Footnotes are written with a reference[^intro] and a matching definition; on
+supporting readers they appear as tap-to-open popups.[^popup]
+
+[^intro]: This is a footnote. Its definition may sit anywhere in the chapter.
+[^popup]: On Kindle and EPUB3 readers the note opens in place instead of jumping.
+
 # Text Formatting
 
 Spell supports the usual inline formatting: **bold**, *italic* and `inline code`.

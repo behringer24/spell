@@ -26,6 +26,7 @@ var (
 
 	firstparagraph bool = true
 	listStack      []listFrame
+	startReadingSet bool
 	inBlockType    int = 0
 
 	laquo  = "\""
@@ -172,10 +173,12 @@ func init() {
 		imageHandler(),
 		indexOutputHandler(),
 		tocOutputHandler(),
+		footnoteDefHandler(),
 		anchorDefHandler(),
 		anchorLinkHandler(),
 		indexEntryHandler(),
 		linkHandler(),
+		footnoteRefHandler(),
 		dividerHandler(),
 		pagebreakHandler(),
 		quotesHandler(),
@@ -306,6 +309,7 @@ func parseMarkdown(book SpellBook, content string, baseDir string, customCSSFile
 	// Pass 1: collect all anchors and index entries before rendering.
 	resetAnchors()
 	listStack = nil
+	startReadingSet = false
 	scanAnchorsAndIndex(content)
 
 	// split contents by lines
@@ -373,6 +377,7 @@ func parseMarkdown(book SpellBook, content string, baseDir string, customCSSFile
 
 	// Add last chapter
 	if currentChapterTitle != "" {
+		appendPendingFootnotes(ctx)
 		addChapter(ctx, currentChapterTitle, currentChapterNumber[1], currentChapterContent)
 	}
 

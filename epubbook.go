@@ -54,4 +54,6 @@ func (b *epubBook) AddNavpoint(label, filename string, order int) NavpointAdder 
 	return &epubNavpoint{np: b.book.AddNavpoint(label, filename, order)}
 }
 
+func (b *epubBook) SetStartReading(filename string) { b.book.SetStartReading(filename) }
+
 func (b *epubBook) Write(filename string) error { return b.book.Write(filename) }
