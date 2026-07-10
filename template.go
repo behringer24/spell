@@ -1,15 +1,11 @@
 package main
 
-
-const defaultCSS = `// Default CSS
-body {
-	font-family: Palatino;
-}
+const defaultCSS = `/* Default spell CSS */
 h1, h2, h3, h4, h5, h6 {
-	font-family: Helvetica;
+	font-family: sans-serif;
 	font-variant: small-caps;
 	text-align: left;
-	color: #666666;
+	color: #666;
 	page-break-after: avoid;
 	page-break-inside: avoid;
 }
@@ -27,10 +23,7 @@ h2 {
 	padding: 0.5em 0;
 }
 p.firstparagraph {
-	text-indent: 2em;
-}
-p {
-	text-indent: 0em;
+	text-indent: 1.5em;
 }
 p, li {
 	margin-top: 0.3em;
@@ -50,7 +43,7 @@ blockquote {
 	page-break-inside: avoid;
 }
 blockquote.cite {
-	font-size:140%;
+	font-size:130%;
 	border: 1px solid #888;
 	border-width: 1px 0;
 	padding: 0.5em;
