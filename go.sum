@@ -4,10 +4,14 @@ github.com/behringer24/azw3 v0.5.0 h1:VkZT/9UPERHZAhCZyFxfKoxnvqtHUgGfkmRdRdX/PQ
 github.com/behringer24/azw3 v0.5.0/go.mod h1:YNlDwukPN3knCzUBX2MQNX3MiI7DxduA1FPKzVpsAd4=
 github.com/behringer24/azw3 v0.5.1 h1:sFv2KyVhWfkHaFtHoc9tbkISxFrHWGnonGSeNkxl5uY=
 github.com/behringer24/azw3 v0.5.1/go.mod h1:Tq0o5RxJ/vUfV9U2gruVhybYaivtke1YHyqWgX+2Ntw=
+github.com/behringer24/azw3 v0.5.2 h1:/UP6lCNear6Njq0Lm62m6rU6lrqL4rFltgiFhgIm81c=
+github.com/behringer24/azw3 v0.5.2/go.mod h1:ho++iaoxs6pvhRBgajJsqEkSmDMBhggFykMAkEWkvcc=
 github.com/behringer24/epub v0.0.0-20260707164353-10b1b2252ade h1:91bwIKtHaaSrqhwSpjuZBIw/oGN8k1k1zTvF6w2EcH8=
 github.com/behringer24/epub v0.0.0-20260707164353-10b1b2252ade/go.mod h1:vvgjMx7Sm/ZJmdv4nrn+kByKpExmr0U5ztgoAWl0MxI=
 github.com/behringer24/mobi v0.8.0 h1:LXT/8617vl87SnQ1h4nCrDrzC2zzs28c6WJ69OMJsjs=
 github.com/behringer24/mobi v0.8.0/go.mod h1:0Bmhx7vwgsKJZkj3IxbqKaSGuHxCKrQfPzlVFlIrKkM=
+github.com/behringer24/mobi v0.9.0 h1:/11L1Glxt9Pth3xaeH1bb2WE8TOMOL7qtV9QHtJyObQ=
+github.com/behringer24/mobi v0.9.0/go.mod h1:0Bmhx7vwgsKJZkj3IxbqKaSGuHxCKrQfPzlVFlIrKkM=
 github.com/gofrs/uuid v4.4.0+incompatible h1:3qXRTX8/NbyulANqlc0lchS1gqAVxRgsuW1YrTJupqA=
 github.com/gofrs/uuid v4.4.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
 golang.org/x/text v0.21.0 h1:zyQAAkrwaneQ066sspRyJaG9VNi/YJ1NfzcGB3hZ/qo=
