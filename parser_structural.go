@@ -45,10 +45,10 @@ func blockquoteContentHandler() lineHandler {
 		handle: func(ctx *parseContext, line string, _ bool) (string, bool) {
 			if inBlockType == BLOCKTYPE_CODE {
 				logMsg(LogVerbose, "blockQuote CODE line")
-				return fmt.Sprintf("%s</br>\n", line), true
+				return fmt.Sprintf("%s<br/>\n", line), true
 			}
 			logMsg(LogVerbose, "blockQuote non CODE but parsed line")
-			return fmt.Sprintf("%s</br>\n", parseLine(ctx, line, true)), true
+			return fmt.Sprintf("%s<br/>\n", parseLine(ctx, line, true)), true
 		},
 	}
 }

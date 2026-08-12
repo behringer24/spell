@@ -70,7 +70,10 @@ func codeSpanHandler() lineHandler {
 	})
 }
 
+// Numeric character references, not named HTML entities: an EPUB3 XHTML document
+// is parsed as XML, where only &lt; &gt; &amp; &quot; &apos; are predefined, so
+// &nbsp; and friends are undeclared-entity errors under epubcheck.
 func commentHandler() lineHandler  { return replaceAndRecurse(reComment, "$1") }
-func emDashHandler() lineHandler   { return replaceAndRecurse(reLongDash, "&nbsp;&mdash;&nbsp;") }
-func enDashHandler() lineHandler   { return replaceAndRecurse(reMidDash, "&nbsp;&ndash;&nbsp;") }
-func ellipsisHandler() lineHandler { return replaceAndRecurse(reThreeDots, "&hellip;") }
+func emDashHandler() lineHandler   { return replaceAndRecurse(reLongDash, "&#160;&#8212;&#160;") }
+func enDashHandler() lineHandler   { return replaceAndRecurse(reMidDash, "&#160;&#8211;&#160;") }
+func ellipsisHandler() lineHandler { return replaceAndRecurse(reThreeDots, "&#8230;") }

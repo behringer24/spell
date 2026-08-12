@@ -293,7 +293,7 @@ func parseLine(ctx *parseContext, line string, insideBlock bool) string {
 func isBlockElement(s string) bool {
 	for _, prefix := range []string{
 		"<h1", "<h2", "<h3", "<h4", "<h5", "<h6",
-		"<blockquote", "<hr", "<MBP:", "<div",
+		"<blockquote", "</blockquote>", "<hr", "<MBP:", "<div",
 		"<ul", "</ul>", "<ol", "</ol>", "<li", "</li",
 		"<section",
 	} {
